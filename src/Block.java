@@ -1,32 +1,19 @@
 import java.net.InetAddress;
 import java.util.Scanner;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.util.Base64;
 
 public class Block{
+    private final AuthenticatedPerfectLink authenticatedLink;
+    public int nodeId;
+    private AddressBook addressBook;
 
-    private AuthenticatedPerfectLink authenticatedLink;
-    private PublicKey publicKey;
-    private PrivateKey privateKey;
-
-    public Block(InetAddress address, int port) throws Exception {
-        authenticatedLink = new AuthenticatedPerfectLink(address, port);
-        generateAndPrintKeys();
-    }
-
-    private void generateAndPrintKeys() throws Exception {
-
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048);
-        KeyPair pair = keyGen.generateKeyPair();
-
-        publicKey = pair.getPublic();
-        privateKey = pair.getPrivate();
-
-        System.out.println("Public Key: " + Base64.getEncoder().encodeToString(publicKey.getEncoded()));
+    public Block(int nodeId, AddressBook addressBook) throws Exception {
+        this.addressBook = addressBook;
+        this.nodeId=nodeId;
+        AddressRecord addressRecord = addressBook.getRecordById(nodeId);
+        InetAddress address = InetAddress.getByName(addressRecord.getAdress());
+        authenticatedLink = new AuthenticatedPerfectLink(address, addressRecord.getPort());
+        startReceiver();
+        startSender();
     }
 
     private void startReceiver() {
@@ -68,11 +55,8 @@ public class Block{
 
         InetAddress address = InetAddress.getByName(args[0]);
         int port = Integer.parseInt(args[1]);
+        AddressBook addressBook = new AddressBook();
+        Block block = new Block(0, addressBook);
 
-        Block block = new Block(address, port);
-
-        block.startReceiver();
-
-        block.startSender();
     }
 }
