@@ -8,17 +8,18 @@ public class Block{
 
     public Block(int nodeId, AddressBook addressBook) throws Exception {
         this.addressBook = addressBook;
+        this.addressBook.setOwnerId(nodeId);
         AddressRecord addressRecord = this.addressBook.getRecordById(nodeId);
-        InetAddress address = InetAddress.getByName(addressRecord.getAddress());
+        InetAddress address = addressRecord.getAddress();
 
         for(int n = 0; n < addressBook.size(); n++ ){
             if (nodeId != n){
-                SecretKey secretKey = DHGenerator.getSecret(Integer.toString(nodeId), Integer.toString(n));
+                byte[] secretKey = DHGenerator.getSecret(Integer.toString(nodeId), Integer.toString(n));
                 addressBook.setSecretKeyById(n, secretKey);
             }
         }
 
-        authenticatedLink = new AuthenticatedPerfectLink(address, addressRecord.getPort());
+        authenticatedLink = new AuthenticatedPerfectLink(addressBook);
         startReceiver();
         startSender();
     }
@@ -39,12 +40,12 @@ public class Block{
         Thread senderThread = new Thread(() -> {
             try {
                 Scanner scanner = new Scanner(System.in);
-                System.out.println("Enter port number: ");
-                int port = Integer.parseInt(scanner.nextLine());
+                System.out.println("Enter node id number: ");
+                int nodeId = Integer.parseInt(scanner.nextLine());
                 while (true) {
                     System.out.print("Enter message to send: ");
                     String message = scanner.nextLine();
-                    authenticatedLink.sendMessage(message, port);
+                    authenticatedLink.sendMessage(message, nodeId);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
