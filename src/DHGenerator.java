@@ -43,7 +43,7 @@ public class DHGenerator {
         }
     }
 
-    public SecretKey getSecret (String namePriv, String namePub) throws Exception {
+    public static SecretKey getSecret (String namePriv, String namePub) throws Exception {
         PrivateKey privateKey = loadPrivateKey(namePriv);
         PublicKey publicKey = loadPublicKey(namePub);
         byte[] secret=generateRawSharedSecret(privateKey, publicKey);

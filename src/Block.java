@@ -1,16 +1,23 @@
+import javax.crypto.SecretKey;
 import java.net.InetAddress;
 import java.util.Scanner;
 
 public class Block{
     private final AuthenticatedPerfectLink authenticatedLink;
-    public int nodeId;
     private AddressBook addressBook;
 
     public Block(int nodeId, AddressBook addressBook) throws Exception {
         this.addressBook = addressBook;
-        this.nodeId=nodeId;
-        AddressRecord addressRecord = addressBook.getRecordById(nodeId);
-        InetAddress address = InetAddress.getByName(addressRecord.getAdress());
+        AddressRecord addressRecord = this.addressBook.getRecordById(nodeId);
+        InetAddress address = InetAddress.getByName(addressRecord.getAddress());
+
+        for(int n = 0; n < addressBook.size(); n++ ){
+            if (nodeId != n){
+                SecretKey secretKey = DHGenerator.getSecret(Integer.toString(nodeId), Integer.toString(n));
+                addressBook.setSecretKeyById(n, secretKey);
+            }
+        }
+
         authenticatedLink = new AuthenticatedPerfectLink(address, addressRecord.getPort());
         startReceiver();
         startSender();
@@ -59,4 +66,5 @@ public class Block{
         Block block = new Block(0, addressBook);
 
     }
+
 }
