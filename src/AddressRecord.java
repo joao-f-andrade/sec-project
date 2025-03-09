@@ -1,9 +1,11 @@
+import javax.crypto.SecretKey;
+
 public class AddressRecord
 {
     private final int nodeId;
     private final int port;
     private final String address;
-    private String secretKey;
+    private SecretKey secretKey;
 
     public AddressRecord(int nodeId, int port, String address) {
         this.nodeId = nodeId;
@@ -19,11 +21,15 @@ public class AddressRecord
         return port;
     }
 
-    public String getAdress() {
+    public String getAddress() {
         return address;
     }
 
-    public String getSecretKey() {
+    public SecretKey getSecretKey() {
         return secretKey;
+    }
+
+    public void setSecretKey(SecretKey secretKey){
+        this.secretKey = secretKey;
     }
 }

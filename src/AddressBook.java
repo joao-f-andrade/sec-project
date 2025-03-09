@@ -1,3 +1,4 @@
+import javax.crypto.SecretKey;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -12,9 +13,6 @@ public class AddressBook {
         records.add(record);
     }
 
-    public void removeRecord(int nodeId) {
-        records.removeIf(record -> record.getNodeId()==nodeId);
-    }
     public AddressRecord getRecordById(int nodeId) {
         for (AddressRecord record : records) {
             if (record.getNodeId() == nodeId) {
@@ -22,6 +20,19 @@ public class AddressBook {
             }
         }
         return null; // Return null if not found
+    }
+
+    public void setSecretKeyById(int nodeId, SecretKey secretKey) {
+        for (AddressRecord record : records) {
+            if (record.getNodeId() == nodeId) { // Find the matching nodeId
+                record.setSecretKey(secretKey);  // Update address
+                return;  // Exit after updating
+            }
+        }
+    }
+
+    public int size(){
+        return this.records.size();
     }
 
 }
