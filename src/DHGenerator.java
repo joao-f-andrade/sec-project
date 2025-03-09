@@ -13,6 +13,42 @@ import java.util.Arrays;
 public class DHGenerator {
     private static final String DH_PARAMS_FILE = "dh_params.txt";
 
+    public static void main(String[] args) throws Exception {
+        // This tests the generation of keys and secret
+
+        generateAndSaveDHParams();
+        // Generate key pairs for Alice and Bob
+        generateSaveKeys("alice");
+        generateSaveKeys("bob");
+        KeyPair aliceKeyPair = loadKeyPair("alice");
+        KeyPair bobKeyPair = loadKeyPair("bob");
+
+        // Generate shared secrets
+        byte[] aliceSharedSecret = generateRawSharedSecret(aliceKeyPair.getPrivate(), bobKeyPair.getPublic());
+        byte[] bobSharedSecret = generateRawSharedSecret(bobKeyPair.getPrivate(), aliceKeyPair.getPublic());
+
+        // Derive AES key from shared secret
+        SecretKey aliceAESKey = deriveAESKey(aliceSharedSecret);
+        SecretKey bobAESKey = deriveAESKey(bobSharedSecret);
+
+        // Print keys (they should be identical)
+        System.out.println("Alice's AES Key: " + bytesToHex(aliceAESKey.getEncoded()));
+        System.out.println("Bob's AES Key:   " + bytesToHex(bobAESKey.getEncoded()));
+
+        // Verify both keys match
+        if (MessageDigest.isEqual(aliceAESKey.getEncoded(), bobAESKey.getEncoded())) {
+            System.out.println("Key exchange successful: Both parties have the same AES key.");
+        } else {
+            System.out.println("Key exchange failed: AES keys do not match.");
+        }
+    }
+
+    public SecretKey getSecret (String namePriv, String namePub) throws Exception {
+        PrivateKey privateKey = loadPrivateKey(namePriv);
+        PublicKey publicKey = loadPublicKey(namePub);
+        byte[] secret=generateRawSharedSecret(privateKey, publicKey);
+        return deriveAESKey(secret);
+    }
     // Generate raw shared secret (needs processing before use)
     private static byte[] generateRawSharedSecret(PrivateKey privateKey, PublicKey publicKey)
             throws NoSuchAlgorithmException, InvalidKeyException {
@@ -78,8 +114,8 @@ public class DHGenerator {
         keyPairGenerator.initialize(dhParams);
         KeyPair keyPair = keyPairGenerator.generateKeyPair();
 
-        saveKey(String.format("./keys/%s_dh.key", name), keyPair.getPublic().getEncoded());
-        saveKey(String.format("./keys/%s_dh_pub.key", name), keyPair.getPrivate().getEncoded());
+        saveKey(String.format("./keys/%s_dh_pub.key", name), keyPair.getPublic().getEncoded());
+        saveKey(String.format("./keys/%s_dh.key", name), keyPair.getPrivate().getEncoded());
 
         System.out.println("Keys saved successfully!");
 
@@ -90,22 +126,24 @@ public class DHGenerator {
         }
     }
     private static KeyPair loadKeyPair(String name) throws Exception {
-        PublicKey publicKey = loadPublicKey(String.format("./keys/%s_dh.key", name));
-        PrivateKey privateKey = loadPrivateKey(String.format("./keys/%s_dh_pub.key", name));
+        PublicKey publicKey = loadPublicKey(name);
+        PrivateKey privateKey = loadPrivateKey(name);
         return new KeyPair(publicKey, privateKey); // Create KeyPair object
     }
 
-    private static PublicKey loadPublicKey(String filename) throws Exception {
-        byte[] keyBytes = readFile(filename);
+    private static PublicKey loadPublicKey(String name) throws Exception {
+        byte[] keyBytes = readFile(String.format("./keys/%s_dh_pub.key", name));
         KeyFactory keyFactory = KeyFactory.getInstance("DH");
         X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
+
         return keyFactory.generatePublic(keySpec);
     }
 
-    private static PrivateKey loadPrivateKey(String filename) throws Exception {
-        byte[] keyBytes = readFile(filename);
+    private static PrivateKey loadPrivateKey(String name) throws Exception {
+        byte[] keyBytes = readFile(String.format("./keys/%s_dh.key", name));
         KeyFactory keyFactory = KeyFactory.getInstance("DH");
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
+
         return keyFactory.generatePrivate(keySpec);
     }
 
