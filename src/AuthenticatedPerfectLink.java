@@ -10,20 +10,23 @@ public class AuthenticatedPerfectLink {
     private InetAddress _receiverAddress;
     private int _port;
     private int _messageID = 0;
-    private String SECRET_KEY = "secretKey";
     private static final int TIMEOUT = 1000;
     private static final int MAX_PACKET_SIZE = 1024;
+    private AddressBook _addressBook;
 
     private Set<Integer> receivedMessages = new HashSet<>();
 
 
-    public AuthenticatedPerfectLink(InetAddress address, int port){
-        _receiverAddress = address;
-        _port = port;
+    public AuthenticatedPerfectLink(AddressBook addressBook){
+        _receiverAddress = addressBook.getRecordById(addressBook.getOwnerId()).getAddress();
+        _port = addressBook.getRecordById(addressBook.getOwnerId()).getPort();
+        _addressBook=addressBook;
     }
 
-    public void sendMessage(String message, int port) throws Exception{
+    public void sendMessage(String message, int nodeId) throws Exception{
 
+        byte[] SECRET_KEY = _addressBook.getRecordById(nodeId).getSecretKey();
+        int port = _addressBook.getRecordById(nodeId).getPort();
         DatagramSocket socket = new DatagramSocket();
         socket.setSoTimeout(TIMEOUT);
 
@@ -71,6 +74,9 @@ public class AuthenticatedPerfectLink {
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
             socket.receive(packet);
 
+            int senderPort = packet.getPort();
+            AddressRecord senderRecord =  _addressBook.getRecordByPort(senderPort);
+
             byte[] data = Arrays.copyOfRange(packet.getData(), 0, packet.getLength() - 32);
             byte[] receivedHmac = Arrays.copyOfRange(packet.getData(), packet.getLength() - 32, packet.getLength());
 
@@ -79,7 +85,7 @@ public class AuthenticatedPerfectLink {
             int seq = Integer.parseInt(parts[0]);
             String message = parts[1];
 
-            byte[] calculatedHmac = calculateHMAC(seq + ":" + message, SECRET_KEY);
+            byte[] calculatedHmac = calculateHMAC(seq + ":" + message, senderRecord.getSecretKey());
 
             if (Arrays.equals(receivedHmac, calculatedHmac)) {
                 if (!receivedMessages.contains(seq)){
@@ -98,9 +104,9 @@ public class AuthenticatedPerfectLink {
         }
     }
 
-    private static byte[] calculateHMAC(String message, String key) throws Exception {
+    private static byte[] calculateHMAC(String message, byte[] key) throws Exception {
         Mac mac = Mac.getInstance("HmacSHA256");
-        SecretKeySpec secretKeySpec = new SecretKeySpec(key.getBytes(), "HmacSHA256");
+        SecretKeySpec secretKeySpec = new SecretKeySpec(key, "HmacSHA256");
         mac.init(secretKeySpec);
         return mac.doFinal(message.getBytes());
     }
