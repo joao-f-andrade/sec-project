@@ -3,6 +3,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class AddressBook {
+    private int ownerId;
     private List<AddressRecord> records;
 
     public AddressBook() {
@@ -22,7 +23,16 @@ public class AddressBook {
         return null; // Return null if not found
     }
 
-    public void setSecretKeyById(int nodeId, SecretKey secretKey) {
+    public AddressRecord getRecordByPort(int port) {
+        for (AddressRecord record : records) {
+            if (record.getPort() == port) {
+                return record;
+            }
+        }
+        return null; // Return null if not found
+    }
+
+    public void setSecretKeyById(int nodeId, byte[] secretKey) {
         for (AddressRecord record : records) {
             if (record.getNodeId() == nodeId) { // Find the matching nodeId
                 record.setSecretKey(secretKey);  // Update address
@@ -33,6 +43,14 @@ public class AddressBook {
 
     public int size(){
         return this.records.size();
+    }
+
+    public void setOwnerId (int nodeId) {
+        ownerId = nodeId;
+    }
+
+    public int getOwnerId () {
+        return ownerId;
     }
 
 }

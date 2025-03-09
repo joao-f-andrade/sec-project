@@ -43,11 +43,10 @@ public class DHGenerator {
         }
     }
 
-    public static SecretKey getSecret (String namePriv, String namePub) throws Exception {
+    public static byte[] getSecret (String namePriv, String namePub) throws Exception {
         PrivateKey privateKey = loadPrivateKey(namePriv);
         PublicKey publicKey = loadPublicKey(namePub);
-        byte[] secret=generateRawSharedSecret(privateKey, publicKey);
-        return deriveAESKey(secret);
+        return generateRawSharedSecret(privateKey, publicKey);
     }
     // Generate raw shared secret (needs processing before use)
     private static byte[] generateRawSharedSecret(PrivateKey privateKey, PublicKey publicKey)

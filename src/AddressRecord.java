@@ -1,11 +1,12 @@
-import javax.crypto.SecretKey;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 public class AddressRecord
 {
     private final int nodeId;
     private final int port;
     private final String address;
-    private SecretKey secretKey;
+    private byte[] secretKey;
 
     public AddressRecord(int nodeId, int port, String address) {
         this.nodeId = nodeId;
@@ -21,15 +22,19 @@ public class AddressRecord
         return port;
     }
 
-    public String getAddress() {
-        return address;
+    public InetAddress getAddress() {
+        try {
+            return InetAddress.getByName(address);
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public SecretKey getSecretKey() {
+    public byte[] getSecretKey() {
         return secretKey;
     }
 
-    public void setSecretKey(SecretKey secretKey){
+    public void setSecretKey(byte[] secretKey){
         this.secretKey = secretKey;
     }
 }
