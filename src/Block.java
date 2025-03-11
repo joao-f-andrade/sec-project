@@ -21,13 +21,13 @@ public class Block{
 
         authenticatedLink = new AuthenticatedPerfectLink(addressBook);
         startReceiver();
-        startSender();
+       // startSender();
     }
 
     private void startReceiver() {
         Thread receiverThread = new Thread(() -> {
             try {
-                System.out.println("Receiver is now listening...");
+                System.out.println("Receiver "+ this.addressBook.getOwnerId() +" is now listening...");
                 authenticatedLink.receiver();
             } catch (Exception e) {
                 e.printStackTrace();
@@ -36,7 +36,7 @@ public class Block{
         receiverThread.start();
     }
 
-    private void startSender() {
+    public void startSender() {
         Thread senderThread = new Thread(() -> {
             try {
                 Scanner scanner = new Scanner(System.in);

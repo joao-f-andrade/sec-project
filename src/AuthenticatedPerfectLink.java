@@ -1,5 +1,4 @@
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
+
 import java.net.*;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -23,10 +22,10 @@ public class AuthenticatedPerfectLink {
         _addressBook=addressBook;
     }
 
-    public void sendMessage(String message, int nodeId) throws Exception{
+    public void sendMessage(String mainMessage, int destinationNodeId) throws Exception{
 
-        byte[] SECRET_KEY = _addressBook.getRecordById(nodeId).getSecretKey();
-        int port = _addressBook.getRecordById(nodeId).getPort();
+        byte[] SECRET_KEY = _addressBook.getRecordById(destinationNodeId).getSecretKey();
+        int port = _addressBook.getRecordById(destinationNodeId).getPort();
         DatagramSocket socket = new DatagramSocket();
         socket.setSoTimeout(TIMEOUT);
 
@@ -34,11 +33,11 @@ public class AuthenticatedPerfectLink {
 
         while(!ack){
 
-            String sendData = _messageID + ":" + message;
-            byte[] hmac = calculateHMAC(sendData, SECRET_KEY);
-            byte[] fullData = concatenate(sendData.getBytes() , hmac);
+            Message message = new Message();
+            message.createMessage(_addressBook.getOwnerId(), mainMessage, _messageID, SECRET_KEY);
 
-            DatagramPacket packet = new DatagramPacket(fullData, fullData.length, _receiverAddress, port);
+
+            DatagramPacket packet = new DatagramPacket(message.getFullData(), message.getFullData().length, _receiverAddress, port);
             socket.send(packet);
 
             try{
@@ -74,29 +73,23 @@ public class AuthenticatedPerfectLink {
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
             socket.receive(packet);
 
-            int senderPort = packet.getPort();
-            AddressRecord senderRecord =  _addressBook.getRecordByPort(senderPort);
+            Message message = new Message();
+            message.decodeMessage(packet);
+            AddressRecord senderRecord =  _addressBook.getRecordById(message.getSenderId());
 
-            byte[] data = Arrays.copyOfRange(packet.getData(), 0, packet.getLength() - 32);
-            byte[] receivedHmac = Arrays.copyOfRange(packet.getData(), packet.getLength() - 32, packet.getLength());
-
-            String receivedMessage = new String(data);
-            String[] parts = receivedMessage.split(":");
-            int seq = Integer.parseInt(parts[0]);
-            String message = parts[1];
-
-            byte[] calculatedHmac = calculateHMAC(seq + ":" + message, senderRecord.getSecretKey());
-
-            if (Arrays.equals(receivedHmac, calculatedHmac)) {
-                if (!receivedMessages.contains(seq)){
-                    receivedMessages.add(seq);
+            byte[] calulatedHMAC =message.getCalculatedHmac(senderRecord.getSecretKey());
+            byte[] hmac= message.getHmac();
+            if (Arrays.equals(calulatedHMAC, hmac)) {
+                int messageId = message.getMessageId();
+                if (!receivedMessages.contains(messageId)){
+                    receivedMessages.add(messageId);
                     System.out.println("Received authenticated message: " + message);
-                    String ackMessage = "ACK:" + seq;
+                    String ackMessage = "ACK:" + messageId;
                     byte[] ackData = ackMessage.getBytes();
                     DatagramPacket ackPacket = new DatagramPacket(ackData, ackData.length, packet.getAddress(), packet.getPort());
                     socket.send(ackPacket);
                 } else {
-                    System.out.println("Duplicate message with sequence number " + seq + " ignored.");
+                    System.out.println("Duplicate message with sequence number " + messageId + " ignored.");
                 }
             } else {
                 System.out.println("Tampered Packet...");
@@ -104,17 +97,5 @@ public class AuthenticatedPerfectLink {
         }
     }
 
-    private static byte[] calculateHMAC(String message, byte[] key) throws Exception {
-        Mac mac = Mac.getInstance("HmacSHA256");
-        SecretKeySpec secretKeySpec = new SecretKeySpec(key, "HmacSHA256");
-        mac.init(secretKeySpec);
-        return mac.doFinal(message.getBytes());
-    }
 
-    private static byte[] concatenate(byte[] a, byte[] b) {
-        byte[] result = new byte[a.length + b.length];
-        System.arraycopy(a, 0, result, 0, a.length);
-        System.arraycopy(b, 0, result, a.length, b.length);
-        return result;
-    }
 }

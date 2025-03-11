@@ -13,23 +13,33 @@ public class Main {
         }
 
         // Generate addressBook and key pairs
-        AddressBook addressBook = new AddressBook();
-        System.out.println("Generating address book");
+        AddressBook[] addressBookArr = new AddressBook[NUMBER_OF_NODES];
         for (int n = 0; n < NUMBER_OF_NODES; n++ ) {
-            AddressRecord addressRecord = new AddressRecord(n, 1235+n, "localhost");
-            addressBook.addRecord(addressRecord);
+            addressBookArr[n] = new AddressBook();
+        }
+        for (int n = 0; n < NUMBER_OF_NODES; n++ ) {
+            for (int m = 0; m < NUMBER_OF_NODES; m++ ) {
+                AddressRecord addressRecord = new AddressRecord(n, 1235+n, "localhost");
+                addressBookArr[m].addRecord(addressRecord);
+            }
             try {
                 DHGenerator.generateSaveKeys(Integer.toString(n));
             } catch (Exception e) {
                 System.out.println("Failed generating key pair");
             }
         }
-        try {
-            new Block(0, addressBook );
-        } catch (Exception e) {
-            System.out.println("Failed generating block");
+        System.out.println("Keys saved successfully!");
 
+        Block[] blockArr = new Block[NUMBER_OF_NODES];
+        // Generate Blocks
+        for (int n = 0; n < NUMBER_OF_NODES; n++ ) {
+            try {
+                blockArr[n] = new Block(n, addressBookArr[n]);
+            } catch (Exception e) {
+                System.out.println("Failed generating block");
+            }
         }
+        blockArr[0].startSender();
     }
 
 }

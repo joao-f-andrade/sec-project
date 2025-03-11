@@ -116,8 +116,6 @@ public class DHGenerator {
         saveKey(String.format("./keys/%s_dh_pub.key", name), keyPair.getPublic().getEncoded());
         saveKey(String.format("./keys/%s_dh.key", name), keyPair.getPrivate().getEncoded());
 
-        System.out.println("Keys saved successfully!");
-
     }
     private static void saveKey(String filename, byte[] keyBytes) throws IOException {
         try (FileOutputStream fos = new FileOutputStream(filename)) {
