@@ -1,4 +1,3 @@
-import javax.crypto.SecretKey;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -23,26 +22,25 @@ public class AddressBook {
         return null; // Return null if not found
     }
 
-    public AddressRecord getRecordByPort(int port) {
+    public AddressRecord getRecordByReceiverPort(int port) {
         for (AddressRecord record : records) {
-            if (record.getPort() == port) {
+            if (record.getReceiverPort() == port) {
                 return record;
             }
         }
+        System.out.println("Failed getting receiver port");
+
         return null; // Return null if not found
     }
 
-    public void setSecretKeyById(int nodeId, byte[] secretKey) {
+    public AddressRecord getRecordBySenderPort(int port) {
         for (AddressRecord record : records) {
-            if (record.getNodeId() == nodeId) { // Find the matching nodeId
-                record.setSecretKey(secretKey);  // Update address
-                return;  // Exit after updating
+            if (record.getSenderPort() == port) {
+                return record;
             }
         }
-    }
-
-    public int size(){
-        return this.records.size();
+        System.out.println("Failed getting sender port");
+        return null; // Return null if not found
     }
 
     public void setOwnerId (int nodeId) {

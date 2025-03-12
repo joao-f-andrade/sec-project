@@ -35,10 +35,6 @@ public class Message {
         return this.fullData;
     }
 
-    public int getSenderId (){
-        return this.messageId;
-    }
-
     public byte[] getHmac() {
         return hmac;
     }

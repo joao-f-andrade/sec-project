@@ -1,5 +1,3 @@
-import javax.crypto.SecretKey;
-import java.net.InetAddress;
 import java.util.Scanner;
 
 public class Block{
@@ -10,24 +8,14 @@ public class Block{
         this.addressBook = addressBook;
         this.addressBook.setOwnerId(nodeId);
         AddressRecord addressRecord = this.addressBook.getRecordById(nodeId);
-        InetAddress address = addressRecord.getAddress();
-
-        for(int n = 0; n < addressBook.size(); n++ ){
-            if (nodeId != n){
-                byte[] secretKey = DHGenerator.getSecret(Integer.toString(nodeId), Integer.toString(n));
-                addressBook.setSecretKeyById(n, secretKey);
-            }
-        }
 
         authenticatedLink = new AuthenticatedPerfectLink(addressBook);
         startReceiver();
-       // startSender();
     }
 
     private void startReceiver() {
         Thread receiverThread = new Thread(() -> {
             try {
-                System.out.println("Receiver "+ this.addressBook.getOwnerId() +" is now listening...");
                 authenticatedLink.receiver();
             } catch (Exception e) {
                 e.printStackTrace();
@@ -39,13 +27,15 @@ public class Block{
     public void startSender() {
         Thread senderThread = new Thread(() -> {
             try {
+                System.out.print("Enter message to send: ") ;
                 Scanner scanner = new Scanner(System.in);
                 System.out.println("Enter node id number: ");
-                int nodeId = Integer.parseInt(scanner.nextLine());
+                int destinationId = Integer.parseInt(scanner.nextLine());
+                int senderPort = addressBook.getRecordById( addressBook.getOwnerId()).getSenderPort();
                 while (true) {
                     System.out.print("Enter message to send: ");
                     String message = scanner.nextLine();
-                    authenticatedLink.sendMessage(message, nodeId);
+                    authenticatedLink.sendMessage(message, destinationId, senderPort );
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -53,19 +43,4 @@ public class Block{
         });
         senderThread.start();
     }
-
-    public static void main(String[] args) throws Exception{
-
-        if (args.length != 2) {
-            System.out.println("Usage: java Block <receiver_address> <port>");
-            return;
-        }
-
-        InetAddress address = InetAddress.getByName(args[0]);
-        int port = Integer.parseInt(args[1]);
-        AddressBook addressBook = new AddressBook();
-        Block block = new Block(0, addressBook);
-
-    }
-
 }
