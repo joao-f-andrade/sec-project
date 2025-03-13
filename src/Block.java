@@ -17,6 +17,7 @@ public class Block{
         receiverPort = addressRecord.getReceiverPort();
         authenticatedLink = new AuthenticatedPerfectLink(senderPort, receiverPort , addressRecord.getAddress());
         startReceiver();
+        nodeLogic();
     }
 
     private void startReceiver() {
@@ -26,29 +27,23 @@ public class Block{
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            try {
-                String message = authenticatedLink.getReceivedMessage();
-                System.out.println("mesnagem no block " + message);
-
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-
         });
         receiverThread.start();
     }
 
-//    private void startReceiver() {
-//        MessageReceiver receiver = new MessageReceiver();
-//        receiver.startReceiver(authenticatedLink);
-//        String message = null;
-//        try {
-//            message = receiver.getMessage();
-//        } catch (InterruptedException e) {
-//            throw new RuntimeException(e);
-//        }
-//        System.out.println("Received: " + message);
-//    }
+    private void nodeLogic() {
+        Thread nodeLoginThread = new Thread(() -> {
+            try {
+                while (true) {
+                    String message = authenticatedLink.getReceivedMessage();
+                    System.out.println("mensagem no block " + message);
+                }
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        nodeLoginThread.start();
+    }
 
     public void startSender() {
         Thread senderThread = new Thread(() -> {
@@ -69,16 +64,11 @@ public class Block{
         senderThread.start();
     }
 
-    public void testSender(){
+    public void testSender(int port){
         try {
-            authenticatedLink.sendMessage("ola de" +senderPort, 1237);
+            authenticatedLink.sendMessage("ola " +port, port);
         } catch (Exception e) {
             System.out.println("falhou envio de "+ senderPort);
         }
     }
-
-    public String getMessage() throws InterruptedException {
-        return messageQueue.take(); // Blocks until a message is available
-    }
-
 }

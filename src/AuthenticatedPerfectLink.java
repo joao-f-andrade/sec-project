@@ -16,7 +16,6 @@ public class AuthenticatedPerfectLink {
     private static final int TIMEOUT = 1000;
     private static final int MAX_PACKET_SIZE = 1024;
     private Map<Integer, byte[]> keysColection;
-    // private static final ConcurrentHashMap<SocketAddress, ClientHandler> clients = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<Integer, ClientHandler> clients = new ConcurrentHashMap<>();
     private final BlockingQueue<String> messageQueue = new LinkedBlockingQueue<>(); // Shared queue
 
@@ -166,8 +165,8 @@ class ClientHandler extends Thread {
                 if (!receivedMessages.contains(messageId)) {
                     receivedMessages.add(messageId);
                     if (Arrays.equals(calculatedHMAC, hmac)) {
-                        System.out.println("Received message: " + content + " from " + packetSenderPort);
-                        queue.put(content);// Add message to queue
+                        //System.out.println("Received message: " + content + " from " + packetSenderPort);
+                        queue.put(content);// Retorna mensagem para uma queue
                     } else {
                         System.out.println("Tampered Packet detected!");
                     }
