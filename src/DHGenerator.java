@@ -43,10 +43,8 @@ public class DHGenerator {
 
     public static void generateAndSaveDHParams () throws NoSuchAlgorithmException, IOException {
         File file = new File(DH_PARAMS_FILE);
-        if (file.exists()) {
-            System.out.println(DH_PARAMS_FILE+" already exists");
-            return;
-        } else {
+        if (!file.exists()) {
+           // System.out.println(DH_PARAMS_FILE+" already exists");
             KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("DH");
 
             keyPairGenerator.initialize(2048); // Generate 2048-bit DH parameters

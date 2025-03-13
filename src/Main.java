@@ -34,7 +34,9 @@ public class Main {
                 System.out.println("Failed generating block");
             }
         }
-        blockArr[0].startSender();
+        blockArr[0].testSender();
+        blockArr[1].testSender();
+
     }
 
 }
