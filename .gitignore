@@ -23,5 +23,8 @@
 hs_err_pid*
 replay_pid*
 
+*.iml
+*.xml
+
 keys/
 dh_params.txt
