@@ -1,0 +1,47 @@
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
+public class AddressRecord
+{
+    private final int nodeId;
+    private final int receiverPort;
+    private final int senderPort;
+    private final String address;
+    private byte[] secretKey;
+
+
+    public AddressRecord(int nodeId, int receiverPort, int senderPort, String address) {
+        this.nodeId = nodeId;
+        this.receiverPort = receiverPort;
+        this.address = address;
+        this.senderPort = senderPort;
+    }
+
+    public int getNodeId() {
+        return nodeId;
+    }
+
+    public int getReceiverPort() {
+        return receiverPort;
+    }
+
+    public InetAddress getAddress() {
+        try {
+            return InetAddress.getByName(address);
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public byte[] getSecretKey() {
+        return secretKey;
+    }
+
+    public void setSecretKey(byte[] secretKey){
+        this.secretKey = secretKey;
+    }
+
+    public int getSenderPort() {
+        return senderPort;
+    }
+}
