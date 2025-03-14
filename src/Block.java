@@ -1,3 +1,4 @@
+import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -5,7 +6,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class Block{
     private final AuthenticatedPerfectLink authenticatedLink;
     private AddressBook addressBook;
-    private final BlockingQueue<String> messageQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<AuthenticatedPerfectLinkOutput> messageQueue = new LinkedBlockingQueue<>();
     private final int senderPort;
     private final int receiverPort;
 
@@ -35,8 +36,9 @@ public class Block{
         Thread nodeLoginThread = new Thread(() -> {
             try {
                 while (true) {
-                    String message = authenticatedLink.getReceivedMessage();
-                    System.out.println("mensagem no block " + message);
+                    AuthenticatedPerfectLinkOutput message = authenticatedLink.getReceivedMessage();
+
+                    System.out.println("mensagem no block " + message.content() + " vindo de " + message.port());
                 }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);

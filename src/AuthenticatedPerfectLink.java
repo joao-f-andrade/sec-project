@@ -17,7 +17,7 @@ public class AuthenticatedPerfectLink {
     private static final int MAX_PACKET_SIZE = 1024;
     private Map<Integer, byte[]> keysColection;
     private static final ConcurrentHashMap<Integer, ClientHandler> clients = new ConcurrentHashMap<>();
-    private final BlockingQueue<String> messageQueue = new LinkedBlockingQueue<>(); // Shared queue
+    private final BlockingQueue<AuthenticatedPerfectLinkOutput> messageQueue = new LinkedBlockingQueue<>(); // Shared queue
 
 
     public AuthenticatedPerfectLink(int senderPort, int receiverPort, InetAddress address ) {
@@ -110,7 +110,7 @@ public class AuthenticatedPerfectLink {
 
         }
     }
-    public String getReceivedMessage() throws InterruptedException {
+    public AuthenticatedPerfectLinkOutput getReceivedMessage() throws InterruptedException {
         return messageQueue.take(); // Blocks until a message is available
     }
 }
@@ -118,11 +118,11 @@ class ClientHandler extends Thread {
     private final InetAddress address;
     private DatagramSocket socket;
     private  int packetSenderPort;
-    private final BlockingQueue<String> messageQueue; // Shared queue reference
+    private final BlockingQueue<AuthenticatedPerfectLinkOutput> messageQueue; // Shared queue reference
     private Set<Integer> receivedMessages = new HashSet<>();
 
 
-    public ClientHandler(DatagramPacket packet, DatagramSocket serverSocket, Map<Integer, byte[]> keysColection, BlockingQueue<String> queue, InetAddress address) {
+    public ClientHandler(DatagramPacket packet, DatagramSocket serverSocket, Map<Integer, byte[]> keysColection, BlockingQueue<AuthenticatedPerfectLinkOutput> queue, InetAddress address) {
         String receivedMessage = new String(packet.getData(), 0, packet.getLength(), StandardCharsets.UTF_8);
         int[] typeAndPort =  AuthenticatedPerfectLinkMessage.getTypeAndPort(receivedMessage);
         int type = typeAndPort[0];
@@ -149,7 +149,7 @@ class ClientHandler extends Thread {
 
     }
 
-    public void handlePacket(DatagramPacket packet, Map<Integer, byte[]> keysColection, BlockingQueue<String> queue) {
+    public void handlePacket(DatagramPacket packet, Map<Integer, byte[]> keysColection, BlockingQueue<AuthenticatedPerfectLinkOutput> queue) {
         try {
             String receivedMessage = new String(packet.getData(), 0, packet.getLength(), StandardCharsets.UTF_8);
             int[] typeAndPort = AuthenticatedPerfectLinkMessage.getTypeAndPort(receivedMessage);
@@ -166,7 +166,8 @@ class ClientHandler extends Thread {
                     receivedMessages.add(messageId);
                     if (Arrays.equals(calculatedHMAC, hmac)) {
                         //System.out.println("Received message: " + content + " from " + packetSenderPort);
-                        queue.put(content);// Retorna mensagem para uma queue
+                        AuthenticatedPerfectLinkOutput messageOutput = new AuthenticatedPerfectLinkOutput(packetSenderPort, content);
+                        queue.put(messageOutput);// Retorna mensagem para uma queue
                     } else {
                         System.out.println("Tampered Packet detected!");
                     }
