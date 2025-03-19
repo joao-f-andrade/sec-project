@@ -5,16 +5,16 @@ public class AddressRecord
 {
     private final int nodeId;
     private final int receiverPort;
-    private final int senderPort;
     private final String address;
-    private byte[] secretKey;
+    private final boolean isClient;
+    private final boolean isLeader;
 
-
-    public AddressRecord(int nodeId, int receiverPort, int senderPort, String address) {
+    public AddressRecord(int nodeId, int receiverPort, int senderPort, String address, Boolean isClient, Boolean isLeader) {
         this.nodeId = nodeId;
         this.receiverPort = receiverPort;
         this.address = address;
-        this.senderPort = senderPort;
+        this.isClient = isClient;
+        this.isLeader = isLeader;
     }
 
     public int getNodeId() {
@@ -33,15 +33,11 @@ public class AddressRecord
         }
     }
 
-    public byte[] getSecretKey() {
-        return secretKey;
+    public boolean isClient() {
+        return isClient;
     }
 
-    public void setSecretKey(byte[] secretKey){
-        this.secretKey = secretKey;
-    }
-
-    public int getSenderPort() {
-        return senderPort;
+    public boolean isLeader() {
+        return isLeader;
     }
 }

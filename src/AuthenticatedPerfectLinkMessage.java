@@ -6,19 +6,19 @@ import java.util.Map;
 
 public class AuthenticatedPerfectLinkMessage {
 
-    public static String createMessage (int portSender, String content, int messageId, byte[] SECRET_KEY) throws Exception{
-        // create message of the format portSender|0|messageId|message|hmac
+    public static String createMessage (int idSender, String content, int messageId, byte[] SECRET_KEY) throws Exception{
+        // create message of the format idSender|0|messageId|message|hmac
         content = escapeDelimiter(content);  // Escape any `|` in content
-        String sendData = portSender+"|0|"+ messageId + "|" + content;
+        String sendData = idSender+"|0|"+ messageId + "|" + content;
         byte[] hmac = calculateHMAC(sendData, SECRET_KEY);
         String encodedHmac = Base64.getEncoder().encodeToString(hmac);
         return sendData + "|" + encodedHmac;
     }
 
-    public static String createDHMessage(int portSender, byte[] publicKey){
-        // create message of the format portSender|1|publicKey
+    public static String createDHMessage(int idSender, byte[] publicKey){
+        // create message of the format idSender|1|publicKey
         String encodedPublicKey = Base64.getEncoder().encodeToString(publicKey);
-        return portSender + "|1|" + encodedPublicKey;
+        return idSender + "|1|" + encodedPublicKey;
     }
 
     public static int[] getTypeAndPort(String receivedMessage) {
@@ -40,10 +40,10 @@ public class AuthenticatedPerfectLinkMessage {
 
     public static Map<String, Object> decodeMessage(String receivedMessage, byte[] secret) throws Exception {
         String[] parts = receivedMessage.split("\\|", -1);
-        int portSender = Integer.parseInt(parts[0]);
+        int idSender = Integer.parseInt(parts[0]);
         int messageId = Integer.parseInt(parts[2]);
         String escapedContent = parts[3];
-        byte[] computedHmac = calculateHMAC(portSender+"|0|"+ messageId + "|" + escapedContent, secret);
+        byte[] computedHmac = calculateHMAC(idSender+"|0|"+ messageId + "|" + escapedContent, secret);
         String content = unescapeDelimiter(escapedContent);
 
         byte[] hmac = Base64.getDecoder().decode(parts[4]);

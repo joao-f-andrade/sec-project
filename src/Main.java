@@ -2,7 +2,7 @@ import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 
 public class Main {
-    public static final int NUMBER_OF_NODES = 5;
+    public static final int NUMBER_OF_NODES = 6; // Num de nodes + 1 cliente
     public static void main(String[] args)
     {
 
@@ -20,7 +20,19 @@ public class Main {
         }
         for (int n = 0; n < NUMBER_OF_NODES; n++ ) {
             for (int m = 0; m < NUMBER_OF_NODES; m++ ) {
-                AddressRecord addressRecord = new AddressRecord(n, 1235+n, n+1435, "localhost");
+                boolean isLeader;
+                boolean isClient;
+                if (n == 0) {
+                    isLeader = false;
+                    isClient = true;
+                } else if (n == 1) {
+                    isLeader=true;
+                    isClient=false;
+                } else {
+                    isLeader=false;
+                    isClient=false;
+                }
+                AddressRecord addressRecord = new AddressRecord(n, 1235+n, n+1435, "localhost", isClient, isLeader);
                 addressBookArr[m].addRecord(addressRecord);
             }
         }
@@ -34,8 +46,13 @@ public class Main {
                 System.out.println("Failed generating block");
             }
         }
-        blockArr[0].testSender(1236);
-        blockArr[1].testSender(1237);
+        //blockArr[0].testSender(1236);
+        //blockArr[0].testSender(1237);
+        //blockArr[1].testSender(1237);
+
+        blockArr[0].appendRequest("ola");
+        blockArr[1].appendRequest("adeus");
+
     }
 
 }

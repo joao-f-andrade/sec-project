@@ -1,24 +1,36 @@
-import java.util.Map;
+import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.security.*;
 
 public class Block{
     private final AuthenticatedPerfectLink authenticatedLink;
     private AddressBook addressBook;
     private final BlockingQueue<AuthenticatedPerfectLinkOutput> messageQueue = new LinkedBlockingQueue<>();
-    private final int senderPort;
     private final int receiverPort;
+    private final boolean isLeader;
+    private final boolean isClient;
+    private final Key rsaPrivateKey;
+    private final int senderId;
+
 
     public Block(int nodeId, AddressBook addressBook) throws Exception {
+        // Setup das propriedades de bloco e addressbook
         this.addressBook = addressBook;
         this.addressBook.setOwnerId(nodeId);
         AddressRecord addressRecord = this.addressBook.getRecordById(nodeId);
-        senderPort = addressRecord.getSenderPort();
         receiverPort = addressRecord.getReceiverPort();
-        authenticatedLink = new AuthenticatedPerfectLink(senderPort, receiverPort , addressRecord.getAddress());
+        isLeader = addressRecord.isLeader();
+        isClient = addressRecord.isClient();
+        senderId = addressRecord.getNodeId();
+
+        // Inicia o perfect link, o listener de mensagens e a thread de logica
+        authenticatedLink = new AuthenticatedPerfectLink(senderId, receiverPort , addressRecord.getAddress());
         startReceiver();
         nodeLogic();
+
+        rsaPrivateKey = KeyLoader.loadKeyFromFile("keys/" + nodeId + "_id_rsa");
     }
 
     private void startReceiver() {
@@ -38,7 +50,7 @@ public class Block{
                 while (true) {
                     AuthenticatedPerfectLinkOutput message = authenticatedLink.getReceivedMessage();
 
-                    System.out.println("mensagem no block " + message.content() + " vindo de " + message.port());
+                    System.out.println("mensagem no block "+senderId+ ", " + message.content() + " vindo de " + message.nodeId());
                 }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
@@ -70,7 +82,24 @@ public class Block{
         try {
             authenticatedLink.sendMessage("ola " +port, port);
         } catch (Exception e) {
-            System.out.println("falhou envio de "+ senderPort);
+
+            System.out.println("falhou envio de "+ senderId);
+        }
+    }
+
+    public void appendRequest(String message){
+        List<AddressRecord> records=  addressBook.getAddressRecords();
+        for (AddressRecord record : records) {
+            if (!record.isClient()) {
+                Thread nodeLoginThread = new Thread(() -> {
+                        try {
+                            authenticatedLink.sendMessage(message, record.getReceiverPort());
+                        } catch (Exception e) {
+                            System.out.println("Failed sending " + message + " to " + record.getNodeId());
+                        }
+                });
+                nodeLoginThread.start();
+            } 
         }
     }
 }

@@ -1,6 +1,6 @@
 import java.util.Objects;
 
-public record AuthenticatedPerfectLinkOutput(int port, String content) {
+public record AuthenticatedPerfectLinkOutput(int nodeId, String content) {
     public AuthenticatedPerfectLinkOutput {
         Objects.requireNonNull(content);
     }

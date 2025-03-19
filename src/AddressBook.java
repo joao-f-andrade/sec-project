@@ -33,22 +33,16 @@ public class AddressBook {
         return null; // Return null if not found
     }
 
-    public AddressRecord getRecordBySenderPort(int port) {
-        for (AddressRecord record : records) {
-            if (record.getSenderPort() == port) {
-                return record;
-            }
-        }
-        System.out.println("Failed getting sender port");
-        return null; // Return null if not found
-    }
-
     public void setOwnerId (int nodeId) {
         ownerId = nodeId;
     }
 
     public int getOwnerId () {
         return ownerId;
+    }
+
+    public List<AddressRecord> getAddressRecords (){
+        return records;
     }
 
 }
