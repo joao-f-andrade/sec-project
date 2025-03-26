@@ -90,11 +90,11 @@ public class AuthenticatedPerfectLink {
 
                 }
 
-                socket.close();
+           //     socket.close();
             }
         catch (Exception e) {
             e.printStackTrace();
-            System.out.println("falhou envio de  aqui"+ senderId);
+            System.out.println("message sent fail by "+ senderId + " "+ mainMessage );
         }
             return socket;
         });

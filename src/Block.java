@@ -1,8 +1,10 @@
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.security.*;
 
 public class Block{
     private final AuthenticatedPerfectLink authenticatedLink;
@@ -11,26 +13,31 @@ public class Block{
     private final int receiverPort;
     private final boolean isLeader;
     private final boolean isClient;
-    private final Key rsaPrivateKey;
-    private final int senderId;
+    private final RSAPrivateKey rsaPrivateKey;
+    private final int blockId;
+    private final ArrayList<String> state;
 
 
     public Block(int nodeId, AddressBook addressBook) throws Exception {
-        // Setup das propriedades de bloco e addressbook
+        // Setup of block ad addressbook properties
         this.addressBook = addressBook;
         this.addressBook.setOwnerId(nodeId);
         AddressRecord addressRecord = this.addressBook.getRecordById(nodeId);
         receiverPort = addressRecord.getReceiverPort();
         isLeader = addressRecord.isLeader();
         isClient = addressRecord.isClient();
-        senderId = addressRecord.getNodeId();
+        blockId = addressRecord.getNodeId();
+        state = new ArrayList<>();
+        rsaPrivateKey = KeyLoader.loadPrivateKeyFromFile(nodeId);
 
-        // Inicia o perfect link, o listener de mensagens e a thread de logica
-        authenticatedLink = new AuthenticatedPerfectLink(senderId, receiverPort , addressRecord.getAddress());
+        // start perfect link, message listener and logic thread
+        authenticatedLink = new AuthenticatedPerfectLink(blockId, receiverPort , addressRecord.getAddress());
         startReceiver();
-        nodeLogic();
-
-        rsaPrivateKey = KeyLoader.loadKeyFromFile("keys/" + nodeId + "_id_rsa");
+        if ( this.addressBook.getOwnerId() == 0 ) {
+            clientLogic();
+        } else {
+            nodeLogic();
+        }
     }
 
     private void startReceiver() {
@@ -46,11 +53,61 @@ public class Block{
 
     private void nodeLogic() {
         Thread nodeLoginThread = new Thread(() -> {
+            // TODO add value timestamp
             try {
+                Consensus logic = new Consensus();
+                logic.ByzantineEpochConsensus(0, authenticatedLink, addressBook, rsaPrivateKey);
                 while (true) {
-                    AuthenticatedPerfectLinkOutput message = authenticatedLink.getReceivedMessage();
+                    AuthenticatedPerfectLinkOutput rawMessage = authenticatedLink.getReceivedMessage();
+                    String[] messageAndHash = BlockMessage.splitSignatureMessage(rawMessage.content());
 
-                    System.out.println("mensagem no block "+senderId+ ", " + message.content() + " vindo de " + message.nodeId());
+                    // check if message is correctly signed
+                    boolean isCorrectlySigned = false;
+                    if (!messageAndHash[1].isEmpty()) {
+                        RSAPublicKey publicKey = KeyLoader.loadPublicKeyFromFile(rawMessage.nodeId());
+                        isCorrectlySigned = MessageSigner.verifySignature(messageAndHash[0], messageAndHash[1], publicKey);
+                    }
+                    BlockMessage block = new BlockMessage();
+                    String[] parts = block.decodeMessage(messageAndHash[0]);
+                    if ( blockId == 1){
+                        System.out.println("no leader "+ parts[0]);
+                    }
+                    // check if it's a message from client
+                    switch (parts[0]){
+                        case "APPEND":
+                            if ( addressBook.getRecordById(rawMessage.nodeId()).isClient() && isCorrectlySigned) {
+                                if ( isLeader ) {
+                                        //TODO start consensus
+                                        System.out.println("leader start consensus");
+                                        logic.init(parts[2]);
+                                    }
+                                else {
+                                    if (Objects.equals(parts[0], "APPEND")){
+                                        //TODO start countdown to change leader if doesn't get message from leader
+                                    }
+                                }
+                            }
+                            break;
+                        case "READ":
+                            logic.onRead();
+                            break;
+                        case "STATE":
+                            if (isCorrectlySigned) {
+                                logic.onState(rawMessage);
+                            }
+                            break;
+                    }
+
+
+                    System.out.println("evento " + parts[0] + " na epoch " + parts[1] + " no block "+blockId+ ", " + parts[2] + " vindo de " + rawMessage.nodeId());
+
+                    /*
+                    if (isCorrectlySigned){
+                        System.out.println("assinado evento " + parts[0] + " na epoch " + parts[1] + " no block "+blockId+ ", " + parts[2] + " vindo de " + rawMessage.nodeId());
+                    } else {
+                        System.out.println("nao assinado evento " + parts[0] + " na epoch " + parts[1] + " no block "+blockId+ ", " + parts[2] + " vindo de " + rawMessage.nodeId());
+                    }
+                    */
                 }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
@@ -59,47 +116,60 @@ public class Block{
         nodeLoginThread.start();
     }
 
-    public void startSender() {
-        Thread senderThread = new Thread(() -> {
+    private void clientLogic() {
+        Thread clientLogicThread = new Thread(() -> {
             try {
-                Scanner scanner = new Scanner(System.in);
-                System.out.println("Enter node id number: ");
-                int destinationId = Integer.parseInt(scanner.nextLine());
                 while (true) {
-                    int destinationPort = addressBook.getRecordById(destinationId).getReceiverPort();
-                    System.out.print("Enter message to send: ");
-                    String message = scanner.nextLine();
-                    authenticatedLink.sendMessage(message,  destinationPort);
+                    AuthenticatedPerfectLinkOutput rawMessage = authenticatedLink.getReceivedMessage();
+
+                    String[] messageAndHash = BlockMessage.splitSignatureMessage(rawMessage.content());
+
+                    // check if message is correctly signed
+                    boolean isCorrectlySigned = false;
+                    if (!messageAndHash[1].isEmpty()) {
+                        RSAPublicKey publicKey = KeyLoader.loadPublicKeyFromFile(rawMessage.nodeId());
+                        isCorrectlySigned = MessageSigner.verifySignature(messageAndHash[0], messageAndHash[1], publicKey);
+                    }
+                    String[] parts = BlockMessage.decodeMessage(messageAndHash[0]);
+                    if (isCorrectlySigned){
+                        System.out.println("cliente recebeu correctamente assinado evento " + parts[0] + " na epoch " + parts[1] + ", " + parts[2] + " vindo de " + rawMessage.nodeId());
+                    } else {
+                        System.out.println("cliente recebeu nao assinado evento " + parts[0] + " na epoch " + parts[1] + ", " + parts[2] + " vindo de " + rawMessage.nodeId());
+                    }
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
         });
-        senderThread.start();
+        clientLogicThread.start();
     }
 
-    public void testSender(int port){
-        try {
-            authenticatedLink.sendMessage("ola " +port, port);
-        } catch (Exception e) {
-
-            System.out.println("falhou envio de "+ senderId);
-        }
-    }
-
-    public void appendRequest(String message){
+    public void clientAppendRequest(String message){
+        // Client method to request append of value
         List<AddressRecord> records=  addressBook.getAddressRecords();
         for (AddressRecord record : records) {
             if (!record.isClient()) {
                 Thread nodeLoginThread = new Thread(() -> {
                         try {
-                            authenticatedLink.sendMessage(message, record.getReceiverPort());
+                            String message1 = BlockMessage.createMessage("APPEND", 0, message, true, rsaPrivateKey);
+
+                            authenticatedLink.sendMessage(message1, record.getReceiverPort());
                         } catch (Exception e) {
                             System.out.println("Failed sending " + message + " to " + record.getNodeId());
                         }
                 });
                 nodeLoginThread.start();
             } 
+        }
+    }
+    public void testSender(int port, String message){
+        // Method to test sending a message
+        try {
+            String message1 = BlockMessage.createMessage("TEST", 0, message, false, rsaPrivateKey);
+            authenticatedLink.sendMessage(message1, port);
+        } catch (Exception e) {
+
+            System.out.println("falhou envio de "+ blockId);
         }
     }
 }

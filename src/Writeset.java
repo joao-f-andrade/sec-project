@@ -1,6 +1,4 @@
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 public class Writeset{
@@ -14,6 +12,14 @@ public class Writeset{
     public void addElement(Integer timestamp, String value){
         Pair element = new Pair(timestamp, value);
         _writeset.add(element);
+    }
+
+    public String writesetToString(){
+        String string = "{";
+        for (Pair<Integer, String> pair : _writeset){
+            string = "<"+pair.key+","+pair.value+">";
+        }
+        return string + "}";
     }
 
     //Helper Class, no need to look at it   

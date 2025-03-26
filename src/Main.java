@@ -48,10 +48,9 @@ public class Main {
         }
         //blockArr[0].testSender(1236);
         //blockArr[0].testSender(1237);
-        //blockArr[1].testSender(1237);
-
-        blockArr[0].appendRequest("ola");
-        blockArr[1].appendRequest("adeus");
+        //blockArr[1].testSender(1235, "ola");
+        blockArr[0].clientAppendRequest("Lisboa");
+        // /blockArr[1].appendRequest("adeus");
 
     }
 
