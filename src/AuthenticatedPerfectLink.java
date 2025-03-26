@@ -14,7 +14,7 @@ public class AuthenticatedPerfectLink {
     private final int senderId;
     private static int _messageID = 0;
     private static final int TIMEOUT = 5000;
-    private static final int MAX_PACKET_SIZE = 1024;
+    private static final int MAX_PACKET_SIZE = 2048;
     private Map<Integer, byte[]> keysColection;
     private  final ConcurrentHashMap<Integer, ClientHandler> clients = new ConcurrentHashMap<>();
     private  final ConcurrentHashMap<Integer, DatagramSocket> senders = new ConcurrentHashMap<>();
@@ -69,6 +69,9 @@ public class AuthenticatedPerfectLink {
 
                     String message = AuthenticatedPerfectLinkMessage.createMessage(senderId, mainMessage, _messageID, SECRET_KEY);
 
+                    if (message.getBytes().length > MAX_PACKET_SIZE){
+                        System.out.println("Message too big " + message);
+                        throw new IllegalArgumentException("Message size exceeds max buffer size: " + MAX_PACKET_SIZE);                    }
 
                     DatagramPacket packet = new DatagramPacket(message.getBytes(), message.length(), address, destinationPort);
                     socket.send(packet);
