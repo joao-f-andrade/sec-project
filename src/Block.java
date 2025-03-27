@@ -1,10 +1,12 @@
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.Set;
 
 public class Block{
     private final AuthenticatedPerfectLink authenticatedLink;
@@ -16,6 +18,7 @@ public class Block{
     private final RSAPrivateKey rsaPrivateKey;
     private final int blockId;
     private final ArrayList<String> state;
+    private final Set<BlockMessageStorage> blockMessageStorageSet = new HashSet<>();
 
 
     public Block(int nodeId, AddressBook addressBook) throws Exception {
@@ -67,11 +70,19 @@ public class Block{
                         RSAPublicKey publicKey = KeyLoader.loadPublicKeyFromFile(rawMessage.nodeId());
                         isCorrectlySigned = MessageSigner.verifySignature(messageAndHash[0], messageAndHash[1], publicKey);
                     }
-                    BlockMessage block = new BlockMessage();
-                    String[] parts = block.decodeMessage(messageAndHash[0]);
+                    String[] parts = BlockMessage.decodeMessage(messageAndHash[0]);
+
+                    /*
                     if ( blockId == 1){
                         System.out.println("no leader "+ parts[0]);
                     }
+                    */
+
+                    // Discard duplicate messages
+                    // todo por na proxima linha ets e valuets
+                    BlockMessageStorage blockMessageStorage = new BlockMessageStorage( 0, Integer.parseInt(parts[1]), rawMessage.nodeId(), parts[0], parts[2]);
+                    if ( !blockMessageStorageSet.contains(blockMessageStorage)) {
+                        blockMessageStorageSet.add(blockMessageStorage);
                     // check if it's a message from client
                     switch (parts[0]){
                         case "APPEND":
@@ -96,6 +107,9 @@ public class Block{
                                 logic.onState(rawMessage);
                             }
                             break;
+                            case "COLLECTED":
+                                logic.onCollected(parts[2]);
+                            break;
                     }
 
 
@@ -107,7 +121,7 @@ public class Block{
                     } else {
                         System.out.println("nao assinado evento " + parts[0] + " na epoch " + parts[1] + " no block "+blockId+ ", " + parts[2] + " vindo de " + rawMessage.nodeId());
                     }
-                    */
+                    */}
                 }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);

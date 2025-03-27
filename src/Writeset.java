@@ -17,7 +17,7 @@ public class Writeset{
     public String writesetToString(){
         String string = "{";
         for (Pair<Integer, String> pair : _writeset){
-            string = "<"+pair.key+","+pair.value+">";
+            string = pair.key+","+pair.value;
         }
         return string + "}";
     }

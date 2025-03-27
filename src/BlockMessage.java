@@ -22,7 +22,9 @@ public class BlockMessage {
     }
 
     public static String[] splitSignatureMessage(String fullMessage) {
-        // return the escaped message and the rsaHash or empty string
+        // return the escaped message and the rsaHash or empty string of the format
+        // event:epoch:message:signature
+
         int lastColonIndex = fullMessage.lastIndexOf(':');
         String beforeLastColon = fullMessage.substring(0, lastColonIndex);
         String afterLastColon = fullMessage.substring(lastColonIndex + 1);
@@ -40,12 +42,12 @@ public class BlockMessage {
         return splitMessage;
    }
 
-    // Escape `|` in message content
+    // Escape `:` in message content
     private static String escapeDelimiter(String input) {
         return input.replace(":", "~~");
     }
 
-    // Unescape `|` in message content
+    // Unescape `:` in message content
     private static String unescapeDelimiter(String input) {
         return input.replace("~~", ":");
     }
