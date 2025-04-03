@@ -1,3 +1,5 @@
+import org.json.JSONObject;
+
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
@@ -17,7 +19,7 @@ public class Block{
     private final boolean isClient;
     private final RSAPrivateKey rsaPrivateKey;
     private final int blockId;
-    private final ArrayList<String> state;
+    private final State _state;
     private final Set<BlockMessageStorage> blockMessageStorageSet = new HashSet<>();
 
 
@@ -30,7 +32,7 @@ public class Block{
         isLeader = addressRecord.isLeader();
         isClient = addressRecord.isClient();
         blockId = addressRecord.getNodeId();
-        state = new ArrayList<>();
+        _state = new State(0, "", 0, new Writeset());
         rsaPrivateKey = KeyLoader.loadPrivateKeyFromFile(nodeId);
 
         // start perfect link, message listener and logic thread
@@ -59,69 +61,52 @@ public class Block{
             // TODO add value timestamp
             try {
                 Consensus logic = new Consensus();
-                logic.ByzantineEpochConsensus(0, authenticatedLink, addressBook, rsaPrivateKey);
+                logic.ByzantineEpochConsensus( authenticatedLink, addressBook, rsaPrivateKey, 0); // TODO implementar logica de consensus instance
                 while (true) {
                     AuthenticatedPerfectLinkOutput rawMessage = authenticatedLink.getReceivedMessage();
                     String[] messageAndHash = BlockMessage.splitSignatureMessage(rawMessage.content());
 
                     // check if message is correctly signed
-                    boolean isCorrectlySigned = false;
-                    if (!messageAndHash[1].isEmpty()) {
-                        RSAPublicKey publicKey = KeyLoader.loadPublicKeyFromFile(rawMessage.nodeId());
-                        isCorrectlySigned = MessageSigner.verifySignature(messageAndHash[0], messageAndHash[1], publicKey);
-                    }
-                    String[] parts = BlockMessage.decodeMessage(messageAndHash[0]);
-
-                    /*
-                    if ( blockId == 1){
-                        System.out.println("no leader "+ parts[0]);
-                    }
-                    */
+                    JSONObject jsonMessage = BlockMessage.decodeMessage(messageAndHash[0]);
 
                     // Discard duplicate messages
                     // todo por na proxima linha ets e valuets
-                    BlockMessageStorage blockMessageStorage = new BlockMessageStorage( 0, Integer.parseInt(parts[1]), rawMessage.nodeId(), parts[0], parts[2]);
-                    if ( !blockMessageStorageSet.contains(blockMessageStorage)) {
+                    BlockMessageStorage blockMessageStorage = new BlockMessageStorage(0, Integer.parseInt(jsonMessage.get("consensusInstance").toString()), rawMessage.nodeId(), jsonMessage.get("event").toString(), jsonMessage.get("content").toString());
+
+                     if ( !blockMessageStorageSet.contains(blockMessageStorage)) {
                         blockMessageStorageSet.add(blockMessageStorage);
-                    // check if it's a message from client
-                    switch (parts[0]){
-                        case "APPEND":
-                            if ( addressBook.getRecordById(rawMessage.nodeId()).isClient() && isCorrectlySigned) {
-                                if ( isLeader ) {
-                                        //TODO start consensus
-                                        System.out.println("leader start consensus");
-                                        logic.init(parts[2]);
+                        switch (jsonMessage.get("event").toString()){
+                            case "APPEND":
+                                    if ( isLeader ) {
+                                            //TODO start consensus
+                                            System.out.println("leader start consensus");
+                                            logic.init(jsonMessage.get("content").toString());
+                                        }
+                                    else {
+                                        if (Objects.equals(jsonMessage.get("event"), "APPEND")){
+                                            //TODO start countdown to change leader if doesn't get message from leader
+                                        }
                                     }
-                                else {
-                                    if (Objects.equals(parts[0], "APPEND")){
-                                        //TODO start countdown to change leader if doesn't get message from leader
-                                    }
-                                }
-                            }
-                            break;
-                        case "READ":
-                            logic.onRead();
-                            break;
-                        case "STATE":
-                            if (isCorrectlySigned) {
-                                logic.onState(rawMessage);
-                            }
-                            break;
+                                break;
+                            case "READ":
+                                logic.onRead();
+                                break;
+                            case "STATE":
+                                    logic.onState(rawMessage);
+                                break;
                             case "COLLECTED":
-                                logic.onCollected(parts[2]);
-                            break;
-                    }
+                                logic.onCollected(jsonMessage.get("content"));
+                                break;
+                            case "WRITE":
+                                break;
+                            case "ACCEPT":
+                                break;
+                            case "ABORT":
+                                break;
+                        }
+                         System.out.println("event "+ jsonMessage.get("event") + " no "+ blockId + " content " + jsonMessage.get("content") + " de " + rawMessage.nodeId());
 
-
-                    System.out.println("evento " + parts[0] + " na epoch " + parts[1] + " no block "+blockId+ ", " + parts[2] + " vindo de " + rawMessage.nodeId());
-
-                    /*
-                    if (isCorrectlySigned){
-                        System.out.println("assinado evento " + parts[0] + " na epoch " + parts[1] + " no block "+blockId+ ", " + parts[2] + " vindo de " + rawMessage.nodeId());
-                    } else {
-                        System.out.println("nao assinado evento " + parts[0] + " na epoch " + parts[1] + " no block "+blockId+ ", " + parts[2] + " vindo de " + rawMessage.nodeId());
-                    }
-                    */}
+                     }
                 }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
@@ -144,11 +129,11 @@ public class Block{
                         RSAPublicKey publicKey = KeyLoader.loadPublicKeyFromFile(rawMessage.nodeId());
                         isCorrectlySigned = MessageSigner.verifySignature(messageAndHash[0], messageAndHash[1], publicKey);
                     }
-                    String[] parts = BlockMessage.decodeMessage(messageAndHash[0]);
+                    JSONObject jsonMessage = BlockMessage.decodeMessage(messageAndHash[0]);
                     if (isCorrectlySigned){
-                        System.out.println("cliente recebeu correctamente assinado evento " + parts[0] + " na epoch " + parts[1] + ", " + parts[2] + " vindo de " + rawMessage.nodeId());
+                        System.out.println("cliente recebeu correctamente assinado evento " + jsonMessage.get("event") + " na epoch " + jsonMessage.get("consensusInstance") + ", " + jsonMessage.get("content") + " vindo de " + rawMessage.nodeId());
                     } else {
-                        System.out.println("cliente recebeu nao assinado evento " + parts[0] + " na epoch " + parts[1] + ", " + parts[2] + " vindo de " + rawMessage.nodeId());
+                        System.out.println("cliente recebeu nao assinado evento " + jsonMessage.get("event") + " na epoch " + jsonMessage.get("consensusInstance") + ", " + jsonMessage.get("content") + " vindo de " + rawMessage.nodeId());
                     }
                 }
             } catch (InterruptedException e) {

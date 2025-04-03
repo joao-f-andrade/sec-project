@@ -14,7 +14,7 @@ public class AuthenticatedPerfectLink {
     private final int senderId;
     private static int _messageID = 0;
     private static final int TIMEOUT = 5000;
-    private static final int MAX_PACKET_SIZE = 2048;
+    private static final int MAX_PACKET_SIZE = 20480;
     private Map<Integer, byte[]> keysColection;
     private  final ConcurrentHashMap<Integer, ClientHandler> clients = new ConcurrentHashMap<>();
     private  final ConcurrentHashMap<Integer, DatagramSocket> senders = new ConcurrentHashMap<>();
