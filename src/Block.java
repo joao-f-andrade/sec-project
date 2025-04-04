@@ -20,8 +20,8 @@ public class Block{
     private final RSAPrivateKey rsaPrivateKey;
     private final int blockId;
     private final State _state;
-    private final Set<BlockMessageStorage> blockMessageStorageSet = new HashSet<>();
-
+    private final Set<BlockMessageStorage> blockMessageStorageSet = new HashSet<>(); // colection of messages received
+    private final Set<String> messageHistory = new HashSet<>(); // collection of new messages
 
     public Block(int nodeId, AddressBook addressBook) throws Exception {
         // Setup of block ad addressbook properties
@@ -64,49 +64,88 @@ public class Block{
                 logic.ByzantineEpochConsensus( authenticatedLink, addressBook, rsaPrivateKey, 0); // TODO implementar logica de consensus instance
                 while (true) {
                     AuthenticatedPerfectLinkOutput rawMessage = authenticatedLink.getReceivedMessage();
-                    String[] messageAndHash = BlockMessage.splitSignatureMessage(rawMessage.content());
+                    try {
+                        String[] messageAndHash = BlockMessage.splitSignatureMessage(rawMessage.content());
 
-                    // check if message is correctly signed
-                    JSONObject jsonMessage = BlockMessage.decodeMessage(messageAndHash[0]);
+                        // check if message is correctly signed
+                        JSONObject jsonMessage = BlockMessage.decodeMessage(messageAndHash[0]);
 
-                    // Discard duplicate messages
-                    // todo por na proxima linha ets e valuets
-                    BlockMessageStorage blockMessageStorage = new BlockMessageStorage(0, Integer.parseInt(jsonMessage.get("consensusInstance").toString()), rawMessage.nodeId(), jsonMessage.get("event").toString(), jsonMessage.get("content").toString());
+                        // Discard duplicate messages
+                        // todo por na proxima linha ets e valuets
+                        BlockMessageStorage blockMessageStorage = new BlockMessageStorage(0, Integer.parseInt(jsonMessage.get("consensusInstance").toString()), rawMessage.nodeId(), jsonMessage.get("event").toString(), jsonMessage.get("content").toString());
 
-                     if ( !blockMessageStorageSet.contains(blockMessageStorage)) {
-                        blockMessageStorageSet.add(blockMessageStorage);
-                        switch (jsonMessage.get("event").toString()){
-                            case "APPEND":
+                        if ( !blockMessageStorageSet.contains(blockMessageStorage)) {
+                            blockMessageStorageSet.add(blockMessageStorage);
+                            switch (jsonMessage.get("event").toString()){
+                                case "APPEND":
                                     if ( isLeader ) {
-                                            //TODO start consensus
-                                            System.out.println("leader start consensus");
-                                            logic.init(jsonMessage.get("content").toString());
-                                        }
+                                        //TODO start consensus
+                                        System.out.println("leader start consensus");
+                                        logic.init(jsonMessage.get("content").toString());
+                                    }
                                     else {
                                         if (Objects.equals(jsonMessage.get("event"), "APPEND")){
                                             //TODO start countdown to change leader if doesn't get message from leader
                                         }
                                     }
-                                break;
-                            case "READ":
-                                logic.onRead();
-                                break;
-                            case "STATE":
-                                    logic.onState(rawMessage);
-                                break;
-                            case "COLLECTED":
-                                logic.onCollected(jsonMessage.get("content"));
-                                break;
-                            case "WRITE":
-                                break;
-                            case "ACCEPT":
-                                break;
-                            case "ABORT":
-                                break;
-                        }
-                         System.out.println("event "+ jsonMessage.get("event") + " no "+ blockId + " content " + jsonMessage.get("content") + " de " + rawMessage.nodeId());
+                                    break;
+                                case "READ":
+                                    logic.onRead();
+                                    break;
+                                case "STATE":
+                                    logic.onState(rawMessage, jsonMessage);
+                                    break;
+                                case "COLLECTED":
+                                    logic.onCollected(jsonMessage.get("content"));
+                                    break;
+                                case "WRITE":
+                                    break;
+                                case "ACCEPT":
+                                    break;
+                                case "ABORT":
+                                    break;
+                            }
+                            System.out.println("event "+ jsonMessage.get("event") + " no "+ blockId + " content " + jsonMessage.get("content") + " de " + rawMessage.nodeId());
 
-                     }
+                        }
+                    } catch ( Exception e ) {
+                        if (!messageHistory.contains(rawMessage.content())) {
+                            messageHistory.add(rawMessage.content());
+                            JSONObject jsonMessage = BlockMessage.decodeMessage(rawMessage.content());
+                            switch (jsonMessage.get("event").toString()) {
+                                case "APPEND":
+                                    if (isLeader) {
+                                        //TODO start consensus
+                                        System.out.println("leader start consensus");
+                                        logic.init(jsonMessage.get("content").toString());
+                                    } else {
+                                        if (Objects.equals(jsonMessage.get("event"), "APPEND")) {
+                                            //TODO start countdown to change leader if doesn't get message from leader
+                                        }
+                                    }
+                                    break;
+                                case "READ":
+                                    logic.onRead();
+                                    break;
+                                case "STATE":
+                                    logic.onState(rawMessage, jsonMessage);
+                                    break;
+                                case "COLLECTED":
+                                    logic.onCollected(jsonMessage.get("content"));
+                                    break;
+                                case "WRITE":
+                                    break;
+                                case "ACCEPT":
+                                    break;
+                                case "ABORT":
+                                    break;
+                            }
+                            System.out.println("messagem2 "+jsonMessage);
+
+                        }
+                    }
+
+
                 }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);

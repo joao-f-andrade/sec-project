@@ -1,3 +1,5 @@
+import org.json.JSONArray;
+import org.json.JSONObject;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -9,17 +11,29 @@ public class Writeset{
         _writeset = new HashSet<>();
     }
 
+    public static Writeset fromJson(JSONArray json){
+        //todo implementar isto como deve de ser
+        return new Writeset();
+    }
+
     public void addElement(Integer timestamp, String value){
         Pair element = new Pair(timestamp, value);
         _writeset.add(element);
     }
 
-    public String writesetToString(){
-        String string = "{";
-        for (Pair<Integer, String> pair : _writeset){
-            string = pair.key+","+pair.value;
+    public JSONArray toJson(){
+        // todo apagar estes elementos
+        addElement(2, "Coimbra");
+        addElement(1, "Porto");
+
+        JSONArray jsonArray = new JSONArray();
+        for (Pair<Integer, String> pair : _writeset ) {
+            JSONObject object = new JSONObject();
+            object.put("ts", pair.getKey());
+            object.put("value", pair.getValue());
+            jsonArray.put(object);
         }
-        return string + "}";
+        return jsonArray;
     }
 
     //Helper Class, no need to look at it   

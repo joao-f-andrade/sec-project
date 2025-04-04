@@ -1,11 +1,6 @@
 public class ReadMessage extends Message{
 
-    public ReadMessage(String value, int processID){
-        super(value, processID);
-    }
-
-    @Override
-    public String toString(){
-        return "READ|" + value + "|" + processID;
+    public ReadMessage(String type, int senderId, int consensusTs){
+        super(type, senderId, consensusTs);
     }
 }

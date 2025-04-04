@@ -1,5 +1,4 @@
-import java.util.ArrayList;
-import java.util.List;
+import org.json.JSONObject;
 
 public class State{
 
@@ -13,6 +12,23 @@ public class State{
         _val = val;
         _ets = ets;
         _writeSet = writeSet;
+    }
+
+    public static State fromJson(JSONObject json){
+        int valts = json.getInt("valts");
+        int ets = json.getInt("ets");
+        String val = json.getString("val");
+        Writeset writeSet = Writeset.fromJson( json.getJSONArray("writeSet"));
+        return new State(valts, val, ets, writeSet);
+    }
+
+    public JSONObject toJson(){
+        JSONObject jsonState = new JSONObject();
+        jsonState.put("valts", _valts);
+        jsonState.put("ets", _ets);
+        jsonState.put("val", _val);
+        jsonState.put("writeSet", _writeSet.toJson());
+        return jsonState;
     }
 
     public int getValts(){
