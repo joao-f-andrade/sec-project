@@ -1,33 +1,40 @@
 import org.json.JSONArray;
 import org.json.JSONObject;
+
 import java.util.HashSet;
 import java.util.Set;
 
-public class Writeset{
+public class Writeset {
 
     Set<Pair<Integer, String>> _writeset;
 
-    public Writeset(){
+    public Writeset() {
         _writeset = new HashSet<>();
     }
 
-    public static Writeset fromJson(JSONArray json){
-        //todo implementar isto como deve de ser
-        return new Writeset();
+    public static Writeset fromJson(JSONArray json) {
+        Writeset writeset = new Writeset();
+        for (int i = 0; i < json.length(); i++) {
+            JSONObject obj = json.getJSONObject(i);
+            int timestamp = obj.getInt("ts");
+            String value = obj.getString("value");
+            writeset.addElement(timestamp, value);
+        }
+        return writeset;
     }
 
-    public void addElement(Integer timestamp, String value){
+    public void addElement(Integer timestamp, String value) {
         Pair element = new Pair(timestamp, value);
         _writeset.add(element);
     }
 
-    public JSONArray toJson(){
-        // todo apagar estes elementos
-        addElement(2, "Coimbra");
-        addElement(1, "Porto");
+    public Set<Pair<Integer, String>> getWriteSet() {
+        return _writeset;
+    }
 
+    public JSONArray toJson() {
         JSONArray jsonArray = new JSONArray();
-        for (Pair<Integer, String> pair : _writeset ) {
+        for (Pair<Integer, String> pair : _writeset) {
             JSONObject object = new JSONObject();
             object.put("ts", pair.getKey());
             object.put("value", pair.getValue());

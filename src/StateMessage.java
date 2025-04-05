@@ -25,8 +25,7 @@ public class StateMessage extends Message{
         int consensusTs = json.getInt("consensusInstance");
         String stateHash = json.getString("hash");
         State state = State.fromJson(json.getJSONObject("state"));
-        StateMessage message = new StateMessage(senderId, consensusTs, state, stateHash);
-        return message;
+        return new StateMessage(senderId, consensusTs, state, stateHash);
     }
 
     public String createSignedJsonString(RSAPrivateKey privateKey){
@@ -57,5 +56,14 @@ public class StateMessage extends Message{
 
         return MessageSigner.verifySignature(jsonState.toString(), _stateHash, publicKey);
     }
+
+    public State getState(){
+        return _state;
+    }
+
+    public String getHash(){
+        return _stateHash;
+    }
+
 
 }

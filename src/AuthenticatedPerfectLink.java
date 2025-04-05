@@ -15,13 +15,13 @@ public class AuthenticatedPerfectLink {
     private static int _messageID = 0;
     private static final int TIMEOUT = 5000;
     private static final int MAX_PACKET_SIZE = 20480;
-    private Map<Integer, byte[]> keysColection;
-    private  final ConcurrentHashMap<Integer, ClientHandler> clients = new ConcurrentHashMap<>();
-    private  final ConcurrentHashMap<Integer, DatagramSocket> senders = new ConcurrentHashMap<>();
+    private final Map<Integer, byte[]> keysColection;
+    private final ConcurrentHashMap<Integer, ClientHandler> clients = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, DatagramSocket> senders = new ConcurrentHashMap<>();
     private final BlockingQueue<AuthenticatedPerfectLinkOutput> messageQueue = new LinkedBlockingQueue<>(); // Shared queue
 
 
-    public AuthenticatedPerfectLink(int senderId, int receiverPort, InetAddress address ) {
+    public AuthenticatedPerfectLink(int senderId, int receiverPort, InetAddress address) {
         this.address = address;
         this.senderId = senderId;
         this.receiverPort = receiverPort;
@@ -30,7 +30,6 @@ public class AuthenticatedPerfectLink {
 
     public void sendMessage(String mainMessage, int destinationPort) {
         _messageID += 1;
-        // System.out.println("send message " + destinationPort);
 
         senders.compute(destinationPort, (key, socket) -> {
             try {
@@ -69,9 +68,10 @@ public class AuthenticatedPerfectLink {
 
                     String message = AuthenticatedPerfectLinkMessage.createMessage(senderId, mainMessage, _messageID, SECRET_KEY);
 
-                    if (message.getBytes().length > MAX_PACKET_SIZE){
+                    if (message.getBytes().length > MAX_PACKET_SIZE) {
                         System.out.println("Message too big " + message);
-                        throw new IllegalArgumentException("Message size exceeds max buffer size: " + MAX_PACKET_SIZE);                    }
+                        throw new IllegalArgumentException("Message size exceeds max buffer size: " + MAX_PACKET_SIZE);
+                    }
 
                     DatagramPacket packet = new DatagramPacket(message.getBytes(), message.length(), address, destinationPort);
                     socket.send(packet);
@@ -93,17 +93,16 @@ public class AuthenticatedPerfectLink {
 
                 }
 
-           //     socket.close();
+                //     socket.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.out.println("message sent fail by " + senderId + " " + mainMessage);
             }
-        catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("message sent fail by "+ senderId + " "+ mainMessage );
-        }
             return socket;
         });
     }
 
-    public String receiver() throws Exception {
+    public void receiver() throws Exception {
         DatagramSocket serverSocket = new DatagramSocket(receiverPort);  // Main socket for receiving
 
         while (true) {
@@ -111,16 +110,16 @@ public class AuthenticatedPerfectLink {
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
             serverSocket.receive(packet);
             String receivedMessage = new String(packet.getData(), 0, packet.getLength(), StandardCharsets.UTF_8);
-            int[] typeAndId =  AuthenticatedPerfectLinkMessage.getTypeAndPort(receivedMessage);
+            int[] typeAndId = AuthenticatedPerfectLinkMessage.getTypeAndPort(receivedMessage);
             int packetSenderId = typeAndId[1];
 
             clients.compute(packetSenderId, (key, handler) -> {
 
-                    if (handler == null) {
+                if (handler == null) {
                     handler = new ClientHandler(packet, serverSocket, keysColection, messageQueue, address);  // Pass the main socket
                     handler.start();
                     handler.handlePacket(packet, keysColection, messageQueue);
-                    } else {
+                } else {
                     handler.handlePacket(packet, keysColection, messageQueue);
                 }
                 return handler;
@@ -128,21 +127,22 @@ public class AuthenticatedPerfectLink {
 
         }
     }
+
     public AuthenticatedPerfectLinkOutput getReceivedMessage() throws InterruptedException {
         return messageQueue.take(); // Blocks until a message is available
     }
 }
+
 class ClientHandler extends Thread {
     private final InetAddress address;
     private DatagramSocket socket;
-    private  int packetSenderId;
+    private int packetSenderId;
     private final BlockingQueue<AuthenticatedPerfectLinkOutput> messageQueue; // Shared queue reference
-    private Set<Integer> receivedMessages = new HashSet<>();
 
 
     public ClientHandler(DatagramPacket packet, DatagramSocket serverSocket, Map<Integer, byte[]> keysColection, BlockingQueue<AuthenticatedPerfectLinkOutput> queue, InetAddress address) {
         String receivedMessage = new String(packet.getData(), 0, packet.getLength(), StandardCharsets.UTF_8);
-        int[] typeAndId =  AuthenticatedPerfectLinkMessage.getTypeAndPort(receivedMessage);
+        int[] typeAndId = AuthenticatedPerfectLinkMessage.getTypeAndPort(receivedMessage);
         this.packetSenderId = typeAndId[1];
         this.messageQueue = queue; // Store queue reference
         this.address = address;
@@ -156,7 +156,7 @@ class ClientHandler extends Thread {
             int type = typeAndId[0];
             this.packetSenderId = typeAndId[1];
 
-            if (type==1) {
+            if (type == 1) {
                 byte[] publicKeyBytesClient = AuthenticatedPerfectLinkMessage.decodeDHMessage(receivedMessage);
                 PublicKey clientPublicKey = DHGenerator.bytesToPublicKey(publicKeyBytesClient);
                 try {
@@ -168,6 +168,7 @@ class ClientHandler extends Thread {
                     DatagramPacket serverPacket = new DatagramPacket(message.getBytes(), message.length(), address, packet.getPort());
                     socket.send(serverPacket);
                 } catch (Exception e) {
+                    e.printStackTrace();
                     System.out.println("Failed creating key pair");
                 }
             }
@@ -179,27 +180,19 @@ class ClientHandler extends Thread {
                 byte[] hmac = (byte[]) decoded.get("hmac");
                 byte[] calculatedHMAC = (byte[]) decoded.get("calculatedHmac");
                 String content = (String) decoded.get("content");
-                if (!receivedMessages.contains(messageId)) {
-                    receivedMessages.add(messageId);
-                    if (Arrays.equals(calculatedHMAC, hmac)) {
-                        //System.out.println("Received message: " + content + " from " + packetSenderPort);
-                        AuthenticatedPerfectLinkOutput messageOutput = new AuthenticatedPerfectLinkOutput(packetSenderId, content);
-                        queue.put(messageOutput);// Retorna mensagem para uma queue
-                    } else {
-                        System.out.println("Tampered Packet detected!");
-                    }
+                if (Arrays.equals(calculatedHMAC, hmac)) {
+                    //System.out.println("Received message: " + content + " from " + packetSenderPort);
+                    AuthenticatedPerfectLinkOutput messageOutput = new AuthenticatedPerfectLinkOutput(packetSenderId, content);
+                    queue.put(messageOutput);// Retorna mensagem para uma queue
                 } else {
-                  //  System.out.println("Duplicate message with sequence number " + messageId + " ignored.");
+                    System.out.println("Tampered Packet detected!");
                 }
-
-                // Send acknowledgment
-                // Thread.sleep(1000);
                 String ackMessage = "ACK:" + messageId;
                 byte[] ackData = ackMessage.getBytes();
                 DatagramPacket ackPacket = new DatagramPacket(ackData, ackData.length, address, packet.getPort());
                 socket.send(ackPacket);
             }
-        } catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

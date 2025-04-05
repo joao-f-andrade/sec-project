@@ -1,6 +1,8 @@
 import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.*;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class Consensus {
@@ -17,48 +19,44 @@ public class Consensus {
     private Map<Integer, StateMessage> _collectedState; // collected map for leader to broadcast
     private JSONObject _jsonCollected;
     private boolean _collectedSent;
-    private Writeset _written;
+    private Map<Integer, String> _written;
     private boolean _writtenSent;
     private Map<Integer, String> _accepted;
+    private boolean _acceptedSent;
     private int _consensusInstance;
 
     private AddressBook addressBook;
     private RSAPrivateKey privateKey;
 
-    public void ByzantineEpochConsensus(AuthenticatedPerfectLink apl, AddressBook addressBook, RSAPrivateKey privateKey, int consensusInstance
-    ){
-        for (AddressRecord record: addressBook.getAddressRecords()) {
+    public void ByzantineEpochConsensus(AuthenticatedPerfectLink apl, AddressBook addressBook, RSAPrivateKey privateKey, int consensusInstance) {
+        for (AddressRecord record : addressBook.getAddressRecords()) {
             if (record.isLeader()) {
                 this.leaderID = record.getNodeId();
             }
         }
         this.addressBook = addressBook;
         this.processID = addressBook.getOwnerId();
-        _written = new Writeset();
+        _written = new HashMap<>();
         _accepted = new HashMap<>();
         this.comms = apl;
-        _nodes = addressBook.getAddressRecords().size()-1; // total nodes - client
-        _fs = (_nodes - 1)/3;
-        this.privateKey=privateKey;
+        _nodes = addressBook.getAddressRecords().size() - 1; // total nodes - client
+        _fs = (_nodes - 1) / 3;
+        this.privateKey = privateKey;
         _collectedState = new HashMap<>();
         _collectedSent = false;
         _writtenSent = false;
-        _state= new State(-1, "UNDIFINED",0, new Writeset() );
+        _state = new State(0, "UNDIFINED", 0, new Writeset());
         _state.setVal("UNDEFINED");
         _jsonCollected = new JSONObject();
         _consensusInstance = consensusInstance;
     }
 
-    public void init(String value){
+    public void init(String value) {
         // Only leader runs this
         _state.setVal(value);
-
-        for(int i=0; i<_nodes; i++){
-            _written.addElement(0, "UNDEFINED");
-            _accepted.put(0, "UNDEFINED");
-        }
+        _state.getWriteset().addElement(processID, "Porto"+processID);
         // Leader method to start read phase
-        List<AddressRecord> records=  addressBook.getAddressRecords();
+        List<AddressRecord> records = addressBook.getAddressRecords();
         for (AddressRecord record : records) {
             if (!record.isClient()) {
                 Thread nodeLoginThread = new Thread(() -> {
@@ -76,53 +74,31 @@ public class Consensus {
                 nodeLoginThread.start();
             }
         }
-
-        // puts own state on collected
-      //  String message = BlockMessage.createMessage("STATE", ets, _state.getVal()+_state.getWriteset().writesetToString(), true, privateKey);
-     //   collectedState.put(processID, message);
-
     }
 
-    public void onRead(){
-        /*JSONObject jsonContent = new JSONObject();
-        jsonContent.put("val", _state.getVal());
-        jsonContent.put("valts", _state.getValts());
-        jsonContent.put("writeset", _state.getWriteset().writesetToString());
-        String stringContent = jsonContent.toString();
-
-        String message = BlockMessage.createMessage("STATE", _consensusInstance, stringContent, true, privateKey);
-        comms.sendMessage(message, addressBook.getRecordById(leaderID).getReceiverPort());
-       */
+    public void onRead() {
         StateMessage message = new StateMessage(processID, _consensusInstance, _state);
         String signedMessage = message.createSignedJsonString(privateKey);
         comms.sendMessage(signedMessage, addressBook.getRecordById(leaderID).getReceiverPort());
-
     }
 
-    public void onState(AuthenticatedPerfectLinkOutput message, JSONObject jsonMessage ) {
+    public void onState(AuthenticatedPerfectLinkOutput message, JSONObject jsonMessage) {
         if (processID == this.leaderID) {
             StateMessage stateMessage = StateMessage.fromJson(message.content());
             boolean isVerified = stateMessage.verifyStateHash();
-            if (!_collectedState.containsKey(message.nodeId()) && isVerified){
+            if (!_collectedState.containsKey(message.nodeId()) && isVerified) {
                 _collectedState.put(stateMessage._senderId, stateMessage);
-                            /*
-                String[] messageAndHash = BlockMessage.splitSignatureMessage(message.content());
-                boolean stateIsVerified = MessageSigner.verifySignature(messageAndHash[0], messageAndHash[1], KeyLoader.loadPublicKeyFromFile(message.nodeId()));
-                    if( stateIsVerified) {
-                        _collectedState.put(message.nodeId(), messageAndHash[0]);
-                        _jsonCollected.put(Integer.toString(message.nodeId()) , message.content());
-                    }*/
             }
             //if (_collectedState.size()>(_nodes + _fs)/2 && !_collectedSent){ //todo alterar para esta linha
-            if (_collectedState.size()>4 && !_collectedSent){
-                _collectedSent=true;
-                List<AddressRecord> records=  addressBook.getAddressRecords();
+            if (_collectedState.size() > 4 && !_collectedSent) {
+                _collectedSent = true;
+                List<AddressRecord> records = addressBook.getAddressRecords();
+                CollectedMessage collectedMessage = new CollectedMessage(processID, _consensusInstance, _collectedState);
                 for (AddressRecord record : records) {
                     if (!record.isClient()) {
                         Thread nodeLoginThread = new Thread(() -> {
                             try {
-                                String message1 = BlockMessage.createMessage("COLLECTED", _consensusInstance, _jsonCollected.toString(), false, privateKey);
-                                comms.sendMessage(message1, record.getReceiverPort());
+                                comms.sendMessage(collectedMessage.toJsonString(), record.getReceiverPort());
                             } catch (Exception e) {
                                 e.printStackTrace(); // Prints the full stack trace to standard error
                                 System.out.println("Failed sending COLLECTED");
@@ -135,84 +111,78 @@ public class Consensus {
         }
     }
 
-    public void onCollected(Object objectMessage){
-        if (processID ==2) { // Only accepts Collected events from leader
-            Map<Integer, JSONObject> collectedWrite = new HashMap<>();
+    public void onCollected(AuthenticatedPerfectLinkOutput rawMessage) {
+        if (rawMessage.nodeId() == 1) { // Only accepts Collected events from leader
+            JSONObject json = new JSONObject(rawMessage.content());
+            JSONArray collectedStateJson = json.getJSONArray("collectedStateList");
+            for (int i = 0; i < collectedStateJson.length(); i++) {
+                JSONObject jsonStateMessage = collectedStateJson.getJSONObject(i);
+                String hash = jsonStateMessage.getString("hash");
+                int id = jsonStateMessage.getInt("senderId");
+                RSAPublicKey key = KeyLoader.loadPublicKeyFromFile(id);
 
-            JSONObject jsonCollected = BlockMessage.decodeCollectedMessage(objectMessage);
-            Iterator<String> keys = jsonCollected.keys();
-            while (keys.hasNext()) {
-                String key = keys.next();
-                Object value = jsonCollected.get(key);
-                String[] stateAndHash = BlockMessage.splitSignatureMessage(value.toString());
-                boolean stateIsVerified = MessageSigner.verifySignature(stateAndHash[0], stateAndHash[1], KeyLoader.loadPublicKeyFromFile(Integer.parseInt(key)));
-
-                if (!stateIsVerified) {
-                    System.out.println("collected is tampered, leader change needed!");
-                    return;
-                } else {
-                    JSONObject jsonState = new JSONObject(stateAndHash[0]);
-                    collectedWrite.put(Integer.parseInt(key), jsonState);
+                boolean isVerified = MessageSigner.verifySignature(jsonStateMessage.getJSONObject("state").toString(), hash, key);
+                if (!isVerified) {
+                    throw new RuntimeException("collected is tampered, leader change needed!");
                 }
             }
-        //if ( _collectedWrite.size()> (_nodes + _fs)/2 && !_writtenSent){ //todo alterar para isto
-            if ( collectedWrite.size()>4 && !_writtenSent){
-            _writtenSent = true;
-            List<AddressRecord> records=  addressBook.getAddressRecords();
+            if (!_writtenSent) {
+                _writtenSent = true;
+                List<AddressRecord> records = addressBook.getAddressRecords();
+                for (AddressRecord record : records) {
+                    if (!record.isClient()) {
+                        Thread nodeLoginThread = new Thread(() -> {
+                            try {
+                                String val = findBySenderId(collectedStateJson, 1);
+                                WriteMessage writeMessage = new WriteMessage(processID, _consensusInstance, val); // todo fazer o predicado
+                                comms.sendMessage(writeMessage.toJsonString(), record.getReceiverPort());
+                            } catch (Exception e) {
+                                System.out.println("Failed sending WRITE");
+                                e.printStackTrace(); // Prints the full stack trace to standard error
+                            }
+                        });
+                        nodeLoginThread.start();
+                    }
+                }
+            }
+        }
+    }
+
+    // todo fazer verificacao de quorum
+    public void onWrite(JSONObject objectMessage) {
+        String val = objectMessage.getString("val");
+        int senderId = objectMessage.getInt("senderId");
+        _written.put(senderId, val);
+        if (_written.size() > 4 && !_acceptedSent) {
+            _acceptedSent = true;
+            List<AddressRecord> records = addressBook.getAddressRecords();
+            AcceptMessage acceptMessage = new AcceptMessage(processID, _consensusInstance, _written.get(1));
             for (AddressRecord record : records) {
                 if (!record.isClient()) {
                     Thread nodeLoginThread = new Thread(() -> {
                         try {
-                            String message1 = BlockMessage.createMessage("WRITE", _consensusInstance, collectedWrite.get(1).toString(), false, privateKey); // todo fazer o predicado
-                            comms.sendMessage(message1, record.getReceiverPort());
+                            comms.sendMessage(acceptMessage.toJsonString(), record.getReceiverPort());
                         } catch (Exception e) {
-                            System.out.println("Failed sending WRITE");
-                            e.printStackTrace(); // Prints the full stack trace to standard error
+                            e.printStackTrace();
+                            System.out.println("Failed sending ACCEPTED");
                         }
                     });
                     nodeLoginThread.start();
                 }
             }
         }
-        }
-    }
 
-    public void onReceiveWrite(Object objectMessage){
-        
- /*       _written.put(processID, value);
-
-        int count = 0;
-
-        for(String values : _written.values()){
-            if(values.equals(value)){
-                count++;
-            }
-        }
-
-        if(count > (_nodes + _fs)/2){
-            _state.setValts(ets);
-            _state.setVal(value);
-
-            for(int i = 0; i<_nodes; i++){
-                _written.put(i, "UNDEFINED");
-            }
-
-            Message message = new AcceptMessage(value, processID);
-
-            for(AuthenticatedPerfectLink al : this.comms){
-                al.sendMessage(message.toString(), 1234);
-            }
-
-        }*/
     }
 
 
-
-    public void onReceiveAccepted(int processID, String value){
-        
-       /* _accepted.put(processID, value);
-
-        int count = 0;
+    public void onAccepted(JSONObject objectMessage) {
+        String val = objectMessage.getString("val");
+        int senderId = objectMessage.getInt("senderId");
+        _accepted.put(senderId, val);
+        if (_accepted.size() > 4) {
+            decide(val);
+        }
+       /* int count = 0;
 
         for(String values : _accepted.values()){
             if(values.equals(value)){
@@ -226,12 +196,24 @@ public class Consensus {
                 _accepted.put(i, "UNDEFINED");
             }
             decide(value);
-        }*/
+        }
+        */
     }
 
-    public void decide(String value){
+    public void decide(String value) {
         //logic for deciding
-        System.out.println(value);
+        System.out.println("decided " + value + " in " + processID);
+    }
+
+    //todo apagar
+    private String findBySenderId(JSONArray array, int senderId) {
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject state = array.getJSONObject(i);
+            if (state.getInt("senderId") == senderId) {
+                return state.getJSONObject("state").getString("val");
+            }
+        }
+        return ""; // not found
     }
 
 }

@@ -1,11 +1,20 @@
-public class AcceptMessage extends Message{
+import org.json.JSONObject;
 
-    public AcceptMessage(String value, int processID){
-        super(value, processID);
+public class AcceptMessage extends Message {
+    private final String _val;
+
+    public AcceptMessage(int senderId, int consensusTs, String val) {
+        super("ACCEPT", senderId, consensusTs);
+        _val = val;
     }
 
     @Override
-    public String toString(){
-        return "ACCEPT|" + value + "|" + processID;
+    public String toJsonString() {
+        JSONObject jsonContent = new JSONObject();
+        jsonContent.put("event", _type);
+        jsonContent.put("val", _val);
+        jsonContent.put("consensusInstance", _consensusTs);
+        jsonContent.put("senderId", _senderId);
+        return jsonContent.toString();
     }
 }
