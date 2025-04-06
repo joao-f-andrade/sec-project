@@ -17,6 +17,8 @@ javac -d out -sourcepath src $(find src -name "*.java")```
 java -cp out Main 
 ```
 
+You will be able to see that 2 consensus instances and 2 values were decided
+
 ## Developers
 https://github.com/DiogoCosta96182
 https://github.com/Oleksandr-Peretyatko
