@@ -5,7 +5,6 @@ public class Main {
     public static final int NUMBER_OF_NODES = 5; // Num de nodes
     public void main()
     {
-
         // Generate DH parameters file
         try {
             DHGenerator.generateAndSaveDHParams();
@@ -40,13 +39,8 @@ public class Main {
                 System.out.println("Failed generating block");
             }
         }
-        //blockArr[0].startConsensus("ola", 1);
         this.propose(blockArr, "adeus");
         this.propose(blockArr, "ola");
-
-
-
-
     }
 
     private void propose(Block[] nodes, String value){

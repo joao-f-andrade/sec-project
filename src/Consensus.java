@@ -10,7 +10,7 @@ public class Consensus {
     private final int _processID;
     private int _leaderID;
     private final int _nodes;
-    private int _fs;
+    private final int _fs;
     private final AuthenticatedPerfectLink _comms;
     private State _state;
     private Map<Integer, StateMessage> _collectedState; // collected map for leader to broadcast
@@ -22,9 +22,8 @@ public class Consensus {
     private final AddressBook _addressBook;
     private final RSAPrivateKey _privateKey;
     public BlockState _blockState;
-
-    private AddressBook addressBook;
-    private RSAPrivateKey privateKey;
+    private boolean _hasDecided;
+    private int _ets;
 
     public Consensus(AuthenticatedPerfectLink apl, AddressBook addressBook, RSAPrivateKey privateKey, BlockState blockState) {
         for (AddressRecord record : addressBook.getAddressRecords()) {
@@ -41,28 +40,24 @@ public class Consensus {
         _blockState = blockState;
     }
 
-    public void router(){
-
-    }
-
     public void init() {
-        System.out.println("init start");
+        //System.out.println("init start");
         _collectedState = new HashMap<>();
         _collectedSent = false;
         _writtenSent = false;
         _acceptedSent = false;
+        _ets=0;
         _state = new State(0, "UNDEFINED", 0, new Writeset());
-        _state.setVal("UNDEFINED");
         _written = new HashMap<>();
         _accepted = new HashMap<>();
+        _hasDecided=false;
+
     }
 
     public void propose(String value){
-        // Only leader runs this
         _state.setVal(value);
-        _state.getWriteset().addElement(_processID, "Porto"+_processID);
-        // Leader method to start read phase
         List<AddressRecord> records = _addressBook.getAddressRecords();
+
         for (AddressRecord record : records) {
                 Thread nodeLoginThread = new Thread(() -> {
                     try {
@@ -89,8 +84,7 @@ public class Consensus {
             if (!_collectedState.containsKey(message.nodeId()) && isVerified) {
                 _collectedState.put(stateMessage._senderId, stateMessage);
             }
-            //if (_collectedState.size()>(_nodes + _fs)/2 && !_collectedSent){ //todo alterar para esta linha
-            if (_collectedState.size() > 4 && !_collectedSent) {
+            if (_collectedState.size()>4 && !_collectedSent){
                 _collectedSent = true;
                 List<AddressRecord> records = _addressBook.getAddressRecords();
                 CollectedMessage collectedMessage = new CollectedMessage(_processID, _blockState.getConsensusInstance(), _collectedState);
@@ -136,7 +130,7 @@ public class Consensus {
                                 _comms.sendMessage(writeMessage.toJsonString(), record.getReceiverPort());
                             } catch (Exception e) {
                                 System.out.println("Failed sending WRITE");
-                                e.printStackTrace(); // Prints the full stack trace to standard error
+                                e.printStackTrace();
                             }
                         });
                         nodeLoginThread.start();
@@ -145,17 +139,19 @@ public class Consensus {
         }
     }
 
-    // todo fazer verificacao de quorum
     public void onWrite(JSONObject objectMessage) {
         String val = objectMessage.getString("val");
         int senderId = objectMessage.getInt("senderId");
         _written.put(senderId, val);
 
+        MajorityCheckResult majority=getMajorityValue(_written);
 
-        if (_written.size() > 4 && !_acceptedSent) {
+        if (majority.found()  && !_acceptedSent) {
             _acceptedSent = true;
+            _state.setValts(_ets);
+            _state.setVal(majority.value());
             List<AddressRecord> records = _addressBook.getAddressRecords();
-            AcceptMessage acceptMessage = new AcceptMessage(_processID, _blockState.getConsensusInstance(), _written.get(1));
+            AcceptMessage acceptMessage = new AcceptMessage(_processID, _blockState.getConsensusInstance(), majority.value());
             for (AddressRecord record : records) {
                     Thread nodeLoginThread = new Thread(() -> {
                         try {
@@ -177,25 +173,11 @@ public class Consensus {
         String val = objectMessage.getString("val");
         int senderId = objectMessage.getInt("senderId");
         _accepted.put(senderId, val);
-        if (_accepted.size() > 4) {
-            decide(val);
+        MajorityCheckResult majority=getMajorityValue(_accepted);
+        if (majority.found() && !_hasDecided) {
+            _hasDecided=true;
+            decide(majority.value());
         }
-       /* int count = 0;
-
-        for(String values : _accepted.values()){
-            if(values.equals(value)){
-                count++;
-            }
-        }
-
-         if(count > (_nodes + _fs)/2){
-
-            for(int i = 0; i<_nodes; i++){
-                _accepted.put(i, "UNDEFINED");
-            }
-            decide(value);
-        }
-        */
     }
 
     public void decide(String value) {
@@ -216,4 +198,20 @@ public class Consensus {
         }
         return ""; // not found
     }
+
+    private MajorityCheckResult getMajorityValue(Map<Integer, String> map) {
+        int threshold = (_nodes + _fs) / 2;
+        Map<String, Integer> frequencyMap = new HashMap<>();
+
+        for (String value : map.values()) {
+            int count = frequencyMap.getOrDefault(value, 0) + 1;
+            if (count > threshold) {
+                return new MajorityCheckResult(true, value);
+            }
+            frequencyMap.put(value, count);
+        }
+
+        return new MajorityCheckResult(false, null);    }
 }
+record MajorityCheckResult(boolean found, String value) {}
+

@@ -48,11 +48,8 @@ public class Block {
                     AuthenticatedPerfectLinkOutput rawMessage = authenticatedLink.getReceivedMessage();
                     // Discard duplicate messages
                     if (!messageHistory.contains(rawMessage.content())) {
-                        //System.out.println(rawMessage);
-
                         messageHistory.add(rawMessage.content());
                         JSONObject jsonMessage = BlockMessage.decodeMessage(rawMessage.content());
-
 
                         switch (jsonMessage.get("event").toString()) {
                             case "READ":
@@ -72,7 +69,6 @@ public class Block {
                                 _consensus.onAccepted(jsonMessage);
                                 break;
                         }
-                        // System.out.println("event " + jsonMessage.getString("event") + " em " + blockId + " " + jsonMessage);
                     }
                 }
             } catch (InterruptedException e) {
@@ -91,7 +87,6 @@ public class Block {
 
     public void propose(String value){
         _blockState.addToQueue(value);
-            System.out.println("queue"+_blockState.getProposeQueue());
     }
 
     private void startLoop() {
