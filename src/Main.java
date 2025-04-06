@@ -3,7 +3,7 @@ import java.security.NoSuchAlgorithmException;
 
 public class Main {
     public static final int NUMBER_OF_NODES = 5; // Num de nodes
-    public void main()
+    public static void main(String[] args)
     {
         // Generate DH parameters file
         try {
@@ -39,11 +39,11 @@ public class Main {
                 System.out.println("Failed generating block");
             }
         }
-        this.propose(blockArr, "adeus");
-        this.propose(blockArr, "ola");
+        propose(blockArr, "adeus");
+        propose(blockArr, "ola");
     }
 
-    private void propose(Block[] nodes, String value){
+    private static void propose(Block[] nodes, String value){
         for (Block block : nodes){
             block.propose(value);
         }
