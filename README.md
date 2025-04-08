@@ -11,11 +11,14 @@ Computer Science and Engineering in Instituto Superior Técnico.
 ## Installation
 
 ```bash
-javac -d out -sourcepath src $(find src -name "*.java")```
+javac -d out -sourcepath src $(find src -name "*.java")
 
 ## Usage
 java -cp out AsymetricKeyGenerator
 java -cp out Main 
+
+## Tests
+java -cp out BFTCheckerTest
 ```
 
 You will be able to see that 2 consensus instances and 2 values were decided
