@@ -6,12 +6,12 @@ public class AsymetricKeyGenerator {
     private static final int KEY_SIZE = 2048; // Standard RSA key size
 
     public static void main(String[] args) {
-        for (int i = 0; i <= 5; i++) {
+        for (int i = 0; i <= 4; i++) {
                 generateAndStoreKeys(Integer.toString(i));
         }
     }
 
-    private static void generateAndStoreKeys(String processName) {
+    public static void generateAndStoreKeys(String processName) {
         try {
             // Generate Key Pair
             KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance(ALGORITHM);

@@ -14,6 +14,7 @@ Computer Science and Engineering in Instituto Superior Técnico.
 javac -d out -sourcepath src $(find src -name "*.java")```
 
 ## Usage
+java -cp out AsymetricKeyGenerator
 java -cp out Main 
 ```
 

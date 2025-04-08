@@ -12,6 +12,11 @@ public class Main {
             System.out.println("Failed generating DH params");
         }
 
+        // Generate rsa keys
+        //for (int n = 0; n < NUMBER_OF_NODES; n++ ) {
+        //    AsymetricKeyGenerator.generateAndStoreKeys(String.valueOf(n));
+        //}
+
         // Generate addressBook
         AddressBook[] addressBookArr = new AddressBook[NUMBER_OF_NODES];
         for (int n = 0; n < NUMBER_OF_NODES; n++ ) {
